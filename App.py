@@ -4,29 +4,33 @@ import os
 
 st.set_page_config(page_title="طقس روصو الذكي", page_icon="⛈️", layout="centered")
 
-# اسم الصورة الرقمي الفعلي الموجود في مستودعك حالياً
+# اسم ملف الصورة الرقمي الخاص بك في المستودع
 LOGO_FILE = "1779505332712.jpg"
 
-# عرض الشعار الخاص بك في الأعلى إذا كان الملف موجوداً
+# تجميل وعرض الشعار في الأعلى على شكل دائرة مقصوصة باحترافية وبحجم متناسق للهاتف
 if os.path.exists(LOGO_FILE):
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.image(LOGO_FILE, use_container_width=True)
+    st.markdown(f"""
+    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 10px;">
+        <div style="width: 160px; height: 160px; border-radius: 50%; overflow: hidden; border: 3px solid #4CAF50; box-shadow: 0px 4px 10px rgba(0,0,0,0.3); background-color: #1a1a1a;">
+            <img src="./app/static/{LOGO_FILE}" style="width: 145%; height: 145%; object-fit: cover; object-position: 48% 40%; transform: translate(-15%, -15%);">
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 else:
     st.markdown("<h1 style='text-align: center;'>⛈️ تطبيق طقس روصو الذكي</h1>", unsafe_allow_html=True)
 
-st.markdown("<p style='text-align: center; color: #aaa;'>محلل ومبسط الطقس الاحترافي - الخلاصة والخرائط التنبؤية الحية</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #aaa; font-size: 14px;'>محلل ومبسط الطقس الاحترافي - الخلاصة والخرائط التنبؤية الحية</p>", unsafe_allow_html=True)
 st.write("---")
 
 # عنوان قسم الرادار
 st.markdown("<h3 style='text-align: center; color: #4CAF50;'>🛰️ رادار طقس روصو التفاعلي لحركة الأمطار والسحب</h3>", unsafe_allow_html=True)
 
-# الخدعة البرمجية: استخدام صورتك الحالية لتغطية علامة Windy بشكل دائري وأنيق
+# الخدعة البرمجية: استخدام نفس الدائرة الصغيرة المقصوصة بدقة لتغطية علامة Windy تماماً
 custom_map_html = f"""
 <div style="position: relative; width: 100%; height: 450px; border: 2px solid #4CAF50; border-radius: 10px; overflow: hidden;">
-    <!-- وضع الشعار الخاص بك كغطاء فوق علامة الموقع في الزاوية اليسرى العليا -->
-    <div style="position: absolute; top: 5px; left: 5px; width: 60px; height: 60px; z-index: 999; border-radius: 50%; overflow: hidden; border: 2px solid #4CAF50; box-shadow: 0px 2px 5px rgba(0,0,0,0.5);">
-        <img src="./app/static/{LOGO_FILE}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/60/1a1a1a/4CAF50?text=R';">
+    <!-- الدائرة الصغيرة الذكية التي تحجب علامة الموقع في الزاوية اليسرى العليا -->
+    <div style="position: absolute; top: 8px; left: 8px; width: 55px; height: 55px; z-index: 999; border-radius: 50%; overflow: hidden; border: 2px solid #4CAF50; box-shadow: 0px 2px 5px rgba(0,0,0,0.5); background-color: #1a1a1a;">
+        <img src="./app/static/{LOGO_FILE}" style="width: 145%; height: 145%; object-fit: cover; object-position: 48% 40%; transform: translate(-15%, -15%);" onerror="this.src='https://via.placeholder.com/55/1a1a1a/4CAF50?text=R';">
     </div>
     
     <!-- الخريطة التفاعلية الحية -->
