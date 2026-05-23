@@ -31,16 +31,37 @@ lon = locations_map[selected_city]["lon"]
 
 st.write("---")
 
-# 2. رادار الأمطار (يدوي الفتح والإغلاق لراحة العين وتسريع التطبيق)
+# 2. رادار الأمطار التفاعلي (Ventusky)
 st.markdown("### 🛰️ رادار الأمطار التفاعلي")
 with st.expander("🗺️ اضغط هنا لفتح/إغلاق الخريطة الحية لرادار السحب والأمطار"):
     st.write(f"عرض الرادار المباشر لنطاق: **{selected_city}**")
+    
+    # كود الـ HTML المحدث لتضمين Ventusky وتغطية الشعار في الزاوية اليسرى السفلية
     custom_map_html = f"""
-    <div style="width: 100%; height: 400px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50;">
-        <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=8&overlay=rain&product=ecmwf" width="100%" height="100%" frameborder="0"></iframe>
+    <div style="width: 100%; height: 450px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative;">
+        <!-- خريطة Ventusky المباشرة مع تمرير الإحداثيات وتحديد طبقة الأمطار (rain) -->
+        <iframe src="https://www.ventusky.com/?p={lat};{lon};5&l=rain" width="100%" height="100%" frameborder="0" style="border:0;"></iframe>
+        
+        <!-- غطاء لحجب شعار Ventusky واستبداله بـ Rosso weather -->
+        <div style="
+            position: absolute; 
+            bottom: 0; 
+            left: 0; 
+            background-color: #222222; 
+            color: #4CAF50; 
+            padding: 8px 15px; 
+            font-family: Arial, sans-serif; 
+            font-size: 14px; 
+            font-weight: bold; 
+            border-top-right-radius: 8px; 
+            z-index: 99999;
+            box-shadow: 2px -2px 5px rgba(0,0,0,0.3);
+        ">
+            🌤️ Rosso weather
+        </div>
     </div>
     """
-    st.components.v1.html(custom_map_html, height=400)
+    st.components.v1.html(custom_map_html, height=450)
 
 st.write("---")
 
