@@ -12,69 +12,100 @@ if os.path.exists(LOGO_FILE): st.image(LOGO_FILE)
 st.markdown("<h1 style='text-align: center;'>طقس روصو Rosso weather</h1>", unsafe_allow_html=True)
 st.write("---")
 
-# الرادار
-st.markdown("### 🛰️ رادار الأمطار")
-custom_map_html = f"""
-<div style="width: 100%; height: 400px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50;">
-    <iframe src="https://embed.windy.com/embed2.html?lat=16.51&lon=-15.81&zoom=8&overlay=rain&product=ecmwf" width="100%" height="100%" frameborder="0"></iframe>
-</div>
-"""
-st.components.v1.html(custom_map_html, height=400)
+# 1. قائمة تحديد الموقع الجغرافي (مقاطعات الترارزة)
+st.markdown("### 📍 تحديد الموقع الجغرافي")
+locations_map = {
+    "روصو": {"lat": 16.51, "lon": -15.81},
+    "اركيز": {"lat": 16.91, "lon": -15.28},
+    "المذرذرة": {"lat": 16.92, "lon": -15.80},
+    "بوتلميت": {"lat": 17.54, "lon": -14.77},
+    "واد الناقة": {"lat": 17.98, "lon": -15.49},
+    "كرمسين": {"lat": 16.49, "lon": -16.20},
+    "تكنت": {"lat": 17.24, "lon": -16.14},
+    "انجاكو": {"lat": 16.29, "lon": -16.45}
+}
+
+selected_city = st.selectbox("اختر النطاق المراد تحليله:", list(locations_map.keys()))
+lat = locations_map[selected_city]["lat"]
+lon = locations_map[selected_city]["lon"]
 
 st.write("---")
 
-# التحليل
-st.subheader("📊 ملخص التوقعات")
+# 2. رادار الأمطار (يدوي الفتح والإغلاق لراحة العين وتسريع التطبيق)
+st.markdown("### 🛰️ رادار الأمطار التفاعلي")
+with st.expander("🗺️ اضغط هنا لفتح/إغلاق الخريطة الحية لرادار السحب والأمطار"):
+    st.write(f"عرض الرادار المباشر لنطاق: **{selected_city}**")
+    custom_map_html = f"""
+    <div style="width: 100%; height: 400px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50;">
+        <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=8&overlay=rain&product=ecmwf" width="100%" height="100%" frameborder="0"></iframe>
+    </div>
+    """
+    st.components.v1.html(custom_map_html, height=400)
+
+st.write("---")
+
+# 3. قسم معالجة النماذج العددية وتوليد التدوينة
+st.subheader("📊 ملخص التوقعات وتحليل المنظومة")
 period_map = {
     "24 ساعة": 24,
     "5 أيام": 120,
     "10 أيام": 240,
     "16 يوماً": 384
 }
-period = st.selectbox("المدى الزمني:", list(period_map.keys()))
+period = st.selectbox("المدى الجمني:", list(period_map.keys()))
 
 if st.button("توليد التدوينة الجوية"):
-    with st.spinner("جاري تحليل النماذج..."):
+    with st.spinner(f"جاري معالجة خرائط {selected_city}..."):
         try:
-            url = f"https://api.open-meteo.com/v1/forecast?latitude=16.51&longitude=-15.81&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16"
+            # جلب البيانات الحية بناءً على إحداثيات الموقع المختار
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16"
             data = requests.get(url).json()["hourly"]
             h = period_map[period]
             
-            # حساب المتوسطات والقيم
+            # حساب المتوسطات والقيم المتغيرة
             temps = data["temperature_2m"][:h]
             precip = sum([x for x in data["precipitation"][:h] if x])
             prob = max(data["precipitation_probability"][:h])
             max_t = max(temps)
             min_t = min(temps)
-            
-            # واجهة مبسطة جداً تركز على الحرارة والأمطار
-            c1, c2 = st.columns(2)
-            c1.metric("درجة الحرارة العظمى", f"{max_t:.1f}°C")
-            c2.metric("إجمالي الأمطار المتوقع", f"{precip:.1f} ملم")
-            
-            # محرك كتابة التدوينة (يأخذ العوامل الأخرى في الاعتبار سراً)
-            # رطوبة 700hPa + اتجاه الرياح (موسمية/غبار)
             avg_rh = sum(data["relative_humidity_700hPa"][:h]) / h
-            wind_dir = data["wind_direction_10m"][0]
             
-            st.markdown("### 📝 تدوينة الخبير:")
+            # واجهة نظيفة جداً تركز على الحرارة والأمطار
+            c1, c2 = st.columns(2)
+            c1.metric(f"العظمى في {selected_city}", f"{max_t:.1f}°C")
+            c2.metric("إجمالي الأمطار المرتقب", f"{precip:.1f} ملم")
             
-            # المنطق التحليلي المبطن لفرز الحالة بدقة علمية
-            status = "أجواء مستقرة"
-            if prob > 50: status = "اضطرابات جوية مرتقبة"
-            elif avg_rh > 50: status = "رطوبة عالية تبشر بتكون سحب"
+            st.markdown("### 📝 تدوينة الخبير الأرصادي:")
             
-            blog = f"""
-            بناءً على تحديثات النماذج العددية لمدينة روصو؛ {status}. 
-            من المتوقع أن تسجل الحرارة مستويات تتراوح بين {min_t:.1f}°C و {max_t:.1f}°C.
-            """
-            
-            if precip > 0:
-                blog += f" تشير النماذج إلى فرصة أمطار تصل لـ {prob}%، مدعومة بتيارات رطبة في طبقات الجو العليا ومؤشرات إيجابية من الرياح الموسمية، مما يرفع احتمالية تشكل سحب رعدية."
+            # محرك صياغة تدوينة ذكي ومتغير كلياً حسب المدى الزمني
+            if h == 24:
+                time_context = "خلال الأربع وعشرين ساعة القادمة"
+                trend_context = f"تستقر قراءات الحرارة اللحظية لتسجل عظمى تلامس {max_t:.1f}°C مع أجواء تميل للاعتدال النسبي خلال ساعات الفجر عند {min_t:.1f}°C."
             else:
-                blog += " لا توجد مؤشرات قوية للهطول حالياً، حيث تسيطر كتل هوائية أقل رطوبة، مع نشاط رياح قد يثير الغبار أحياناً."
+                time_context = f"خلال الفترة الممتدة للمدى المتوسط ({period})"
+                trend_context = f"تشير حركة المحاكاة لتذبذب حراري مستمر، حيث تبلغ ذروة الاحترار {max_t:.1f}°C، بينما تنخفض الصغرى في فترات التبريد الإشعاعي الليلي لتلامس {min_t:.1f}°C."
+
+            # فرز رطوبة طبقات الجو العليا والرياح الموسمية في الخلفية
+            if avg_rh > 45:
+                moisture_influence = "مع رصد تدفقات ممتازة للرطوبة البنائية الجوية في الطبقات البنائية (700hPa) ممهدة لتكاثف حملي محلي."
+            else:
+                moisture_influence = "برغم سيطرة كتل هوائية جافة نسبياً في طبقات الجو المتوسطة تحد من الامتداد الشاقولي للسحب."
+
+            # دمج مخرجات المطر في صياغة فصيحة ومتكاملة
+            if precip > 0:
+                blog = f"""
+                توضح تحديثات النماذج العددية لنطاق **{selected_city}** {time_context} مؤشرات على اضطرابات جوية محتملة. {trend_context}
+                
+                {moisture_influence} وبناءً عليه، تضع النماذج فرصة هطول مطري تصل ذروة احتماليتها إلى **{prob}%**، بتراكم إجمالي مرتقب يبلغ **{precip:.1f} ملم**، مما يعزز من فرص نشوء سحب ركامية رعدية على فترات.
+                """
+            else:
+                blog = f"""
+                تُشير التنبؤات الجوية لنطاق **{selected_city}** {time_context} إلى سيطرة أجواء مستقرة بوجه عام. {trend_context}
+                
+                {moisture_influence} وبالتالي تبقى فرص الهطول الفعلي منعدمة عند **0.0 ملم** مع تراجع احتمالية الأمطار لـ **{prob}%**، مع نشاط معتدل للرياح السطحية قد يثير بعض الأتربة العالقة في المناطق المكشوفة.
+                """
             
             st.info(blog)
             
         except Exception as e:
-            st.error("حدث خطأ في جلب البيانات.")
+            st.error("حدث خطأ أثناء معالجة بيانات النموذج الرقمي.")
