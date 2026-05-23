@@ -2,14 +2,14 @@ import streamlit as st
 import requests
 import os
 
-st.set_page_config(page_title="راصد روصو الجوي", page_icon="🌤️", layout="centered")
+st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
 # الشعار
 LOGO_FILE = "1779505332712.jpg"
 st.markdown("<style>.stImage img {border-radius: 50%; border: 3px solid #4CAF50; max-width: 150px; margin: 0 auto; display: block;}</style>", unsafe_allow_html=True)
 if os.path.exists(LOGO_FILE): st.image(LOGO_FILE)
 
-st.markdown("<h1 style='text-align: center;'>راصد روصو الجوي</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>طقس روصو Rosso weather</h1>", unsafe_allow_html=True)
 st.write("---")
 
 # الرادار
@@ -47,7 +47,7 @@ if st.button("توليد التدوينة الجوية"):
             max_t = max(temps)
             min_t = min(temps)
             
-            # واجهة مبسطة جداً
+            # واجهة مبسطة جداً تركز على الحرارة والأمطار
             c1, c2 = st.columns(2)
             c1.metric("درجة الحرارة العظمى", f"{max_t:.1f}°C")
             c2.metric("إجمالي الأمطار المتوقع", f"{precip:.1f} ملم")
@@ -59,7 +59,7 @@ if st.button("توليد التدوينة الجوية"):
             
             st.markdown("### 📝 تدوينة الخبير:")
             
-            # المنطق التحليلي المبطن
+            # المنطق التحليلي المبطن لفرز الحالة بدقة علمية
             status = "أجواء مستقرة"
             if prob > 50: status = "اضطرابات جوية مرتقبة"
             elif avg_rh > 50: status = "رطوبة عالية تبشر بتكون سحب"
