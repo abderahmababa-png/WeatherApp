@@ -1,9 +1,5 @@
-text
 
 streamlit
-
 requests
-
-folium
-
-streamlit-folium
+folium==0.15.1
+streamlit-folium==0.18.0
