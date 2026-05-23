@@ -52,7 +52,7 @@ period_map = {
     "10 أيام": 240,
     "16 يوماً": 384
 }
-period = st.selectbox("المدى الجمني:", list(period_map.keys()))
+period = st.selectbox("المدى الزمني:", list(period_map.keys()))
 
 if st.button("توليد التدوينة الجوية"):
     with st.spinner(f"جاري معالجة خرائط {selected_city}..."):
