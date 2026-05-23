@@ -32,38 +32,43 @@ lon = locations_map[selected_city]["lon"]
 
 st.write("---")
 
-# 2. رادار الأمطار ودرجات الحرارة التفاعلي (محدث لحل مشكلة التحديث الحي)
-st.markdown("### 🛰️ رادار الأمطار والحرارة التفاعلي")
+# 2. رادار الأمطار النظيف كلياً بتقنية القص الرقمي لمنع ظهور أي شعارات أو مساحات بيضاء
+st.markdown("### 🛰️ رادار الأمطار التفاعلي")
 with st.expander("🗺️ اضغط هنا لفتح/إغلاق الخريطة الحية لرادار السحب والأمطار"):
     st.write(f"عرض الرادار المباشر لنطاق: **{selected_city}**")
     
-    # هنا تم ربط رابط Windy بآلية تحديث قسرية عبر تضمين اسم المدينة لمنع تجمد الخريطة
-    # وتم تفعيل طبقة الأمطار والبرق (overlay=rain) مع إظهار درجات الحرارة والضغط والبيانات الرقمية كاملة
+    # استخدام حاوية بـ overflow مخفي وقص أطراف الـ iframe للتخلص من شريط الألوان العلوي وشعار Windy والقائمة البيضاء
     custom_map_html = f"""
-    <div style="width: 100%; height: 500px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative;">
-        <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=8&overlay=rain&product=ecmwf&menu=&message=true&marker=&calendar=now&pressure=true&type=map&location=coordinates&detail=true&metricWind=default&metricTemp=default&city={selected_city}" width="100%" height="100%" frameborder="0" style="border:0;"></iframe>
+    <div style="width: 100%; height: 400px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative; background-color: #1a1a1a;">
+        <div style="width: 100%; height: 100%; top: -45px; position: absolute;">
+            <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=9&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=true&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&v={selected_city}" 
+                    width="100%" 
+                    height="490px" 
+                    frameborder="0" 
+                    style="border:0; clip-path: inset(45px 0px 45px 0px);">
+            </iframe>
+        </div>
         
-        <!-- غطاء سفلي احترافي للهوية الشخصية للتطبيق لإخفاء الروابط التجارية المزعجة أسفل الخريطة -->
+        <!-- ملصق هوية تطبيقك الثابت والأنيق في أعلى اليمين بشكل مستقل -->
         <div style="
             position: absolute; 
-            bottom: 0; 
-            left: 0; 
-            background-color: #191919; 
+            top: 10px; 
+            right: 10px; 
+            background-color: rgba(26, 26, 26, 0.85); 
             color: #4CAF50; 
-            padding: 6px 15px; 
+            padding: 5px 12px; 
             font-family: Arial, sans-serif; 
-            font-size: 13px; 
+            font-size: 12px; 
             font-weight: bold; 
-            border-top-right-radius: 8px; 
-            z-index: 9999;
-            box-shadow: 2px -2px 5px rgba(0,0,0,0.5);
+            border-radius: 5px; 
+            z-index: 999999;
+            direction: rtl;
         ">
-            🌤️ Rosso weather
+            🌤️ رادار طقس روصو
         </div>
     </div>
     """
-    # تمرير الحاوية مع كود الـ HTML
-    components.html(custom_map_html, height=500)
+    components.html(custom_map_html, height=400)
 
 st.write("---")
 
