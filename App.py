@@ -7,23 +7,24 @@ st.markdown("<h1 style='text-align: center;'>⛈️ تطبيق طقس روصو �
 st.markdown("<p style='text-align: center; color: #aaa;'>محلل ومبسط الطقس الاحترافي - الخلاصة والخرائط التنبؤية الحية</p>", unsafe_allow_html=True)
 st.write("---")
 
-# 1. الخريطة التنبؤية الحية المباشرة (رادار حركة الأمطار والسحب من Windy)
-st.subheader("🗺️ رادار ومؤشرات الطقس الحية (توقعات الأمطار والسحب)")
+# 1. تخصيص الواجهة لطقس روصو فوق الخريطة مباشرة
+st.markdown("<h3 style='text-align: center; color: #4CAF50;'>🛰️ رادار طقس روصو التفاعلي لحركة الأمطار والسحب</h3>", unsafe_allow_html=True)
 
-# تضمين خريطة Windy التفاعلية التنبؤية الممركزة على موريتانيا وروصو بدقة
+# تضمين الخريطة الحية مع تقريب الزووم (Zoom=8) لتركيز مباشر على روصو وجنوب موريتانيا وإخفاء القوائم الجانبية قدر الإمكان
 windy_iframe = """
 <iframe 
-    src="https://embed.windy.com/embed2.html?lat=16.51&lon=-15.81&zoom=6&level=surface&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1" 
+    src="https://embed.windy.com/embed2.html?lat=16.51&lon=-15.81&zoom=8&level=surface&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1" 
     width="100%" 
-    height="400" 
-    frameborder="0">
+    height="450" 
+    frameborder="0"
+    style="border: 2px solid #4CAF50; border-radius: 10px;">
 </iframe>
 """
-st.components.v1.html(windy_iframe, height=410)
+st.components.v1.html(windy_iframe, height=460)
 
 st.write("---")
 
-# 2. قسم التحليل الرقمي الذكي للبيانات الخام
+# 2. قسم التحليل الرقمي واستخلاص المؤشرات
 st.subheader("📊 التحليل الرقمي واستخلاص المؤشرات")
 location = st.text_input("📍 اكتب اسم المنطقة المراد تحليلها:", "روصو")
 
