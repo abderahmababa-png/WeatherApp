@@ -7,15 +7,24 @@ st.set_page_config(page_title="طقس روصو الذكي", page_icon="⛈️", 
 # اسم ملف الصورة الرقمي الخاص بك في المستودع
 LOGO_FILE = "1779505332712.jpg"
 
-# تجميل وعرض الشعار في الأعلى على شكل دائرة مقصوصة باحترافية وبحجم متناسق للهاتف
+# إضافة كود CSS لعمل الدائرة بشكل آمن ومضمون 100% على السيرفر
+st.markdown("""
+<style>
+    /* تعديل كافة الصور في واجهة التطبيق لتصبح دائرية وبحجم متناسق */
+    .stImage img {
+        border-radius: 50%;
+        border: 3px solid #4CAF50;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
+        max-width: 160px;
+        margin: 0 auto;
+        display: block;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# عرض الشعار في الأعلى مقصوصاً كدائرة باحترافية عبر أداة Streamlit الرسمية
 if os.path.exists(LOGO_FILE):
-    st.markdown(f"""
-    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 10px;">
-        <div style="width: 160px; height: 160px; border-radius: 50%; overflow: hidden; border: 3px solid #4CAF50; box-shadow: 0px 4px 10px rgba(0,0,0,0.3); background-color: #1a1a1a;">
-            <img src="./app/static/{LOGO_FILE}" style="width: 145%; height: 145%; object-fit: cover; object-position: 48% 40%; transform: translate(-15%, -15%);">
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.image(LOGO_FILE, width=160)
 else:
     st.markdown("<h1 style='text-align: center;'>⛈️ تطبيق طقس روصو الذكي</h1>", unsafe_allow_html=True)
 
@@ -25,12 +34,12 @@ st.write("---")
 # عنوان قسم الرادار
 st.markdown("<h3 style='text-align: center; color: #4CAF50;'>🛰️ رادار طقس روصو التفاعلي لحركة الأمطار والسحب</h3>", unsafe_allow_html=True)
 
-# الخدعة البرمجية: استخدام نفس الدائرة الصغيرة المقصوصة بدقة لتغطية علامة Windy تماماً
-custom_map_html = f"""
+# الخدعة البرمجية: إخفاء علامة Windy عبر شريط داكن صغير مخصص يحتوي على نص أنيق
+custom_map_html = """
 <div style="position: relative; width: 100%; height: 450px; border: 2px solid #4CAF50; border-radius: 10px; overflow: hidden;">
-    <!-- الدائرة الصغيرة الذكية التي تحجب علامة الموقع في الزاوية اليسرى العليا -->
-    <div style="position: absolute; top: 8px; left: 8px; width: 55px; height: 55px; z-index: 999; border-radius: 50%; overflow: hidden; border: 2px solid #4CAF50; box-shadow: 0px 2px 5px rgba(0,0,0,0.5); background-color: #1a1a1a;">
-        <img src="./app/static/{LOGO_FILE}" style="width: 145%; height: 145%; object-fit: cover; object-position: 48% 40%; transform: translate(-15%, -15%);" onerror="this.src='https://via.placeholder.com/55/1a1a1a/4CAF50?text=R';">
+    <!-- غطاء علامة الموقع في الزاوية اليسرى العليا -->
+    <div style="position: absolute; top: 0; left: 0; width: 150px; height: 45px; background-color: #222222; z-index: 999; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 8px; border-right: 1px solid #4CAF50; border-bottom: 1px solid #4CAF50;">
+        <span style="color: #4CAF50; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold;">⛈️ رادار روصو</span>
     </div>
     
     <!-- الخريطة التفاعلية الحية -->
