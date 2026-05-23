@@ -1,21 +1,32 @@
 import streamlit as st
 import requests
+import os
 
 st.set_page_config(page_title="طقس روصو الذكي", page_icon="⛈️", layout="centered")
 
-st.markdown("<h1 style='text-align: center;'>⛈️ تطبيق طقس روصو الذكي</h1>", unsafe_allow_html=True)
+# اسم الصورة الرقمي الفعلي الموجود في مستودعك حالياً
+LOGO_FILE = "1779505332712.jpg"
+
+# عرض الشعار الخاص بك في الأعلى إذا كان الملف موجوداً
+if os.path.exists(LOGO_FILE):
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image(LOGO_FILE, use_container_width=True)
+else:
+    st.markdown("<h1 style='text-align: center;'>⛈️ تطبيق طقس روصو الذكي</h1>", unsafe_allow_html=True)
+
 st.markdown("<p style='text-align: center; color: #aaa;'>محلل ومبسط الطقس الاحترافي - الخلاصة والخرائط التنبؤية الحية</p>", unsafe_allow_html=True)
 st.write("---")
 
-# عنوان القسم
+# عنوان قسم الرادار
 st.markdown("<h3 style='text-align: center; color: #4CAF50;'>🛰️ رادار طقس روصو التفاعلي لحركة الأمطار والسحب</h3>", unsafe_allow_html=True)
 
-# خدعة برمجية: إنشاء حاوية تحتوي على الخريطة وشريط علوي مخصص يغطي مكان الشعار تماماً
-custom_map_html = """
+# الخدعة البرمجية: استخدام صورتك الحالية لتغطية علامة Windy بشكل دائري وأنيق
+custom_map_html = f"""
 <div style="position: relative; width: 100%; height: 450px; border: 2px solid #4CAF50; border-radius: 10px; overflow: hidden;">
-    <!-- الشريط المخصص لتغطية شعار Windy في الزاوية اليسرى العليا -->
-    <div style="position: absolute; top: 0; left: 0; width: 220px; height: 65px; background-color: #1a1a1a; z-index: 999; display: flex; align-items: center; justify-content: center; border-bottom-right-radius: 8px; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);">
-        <span style="color: #4CAF50; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; direction: rtl;">⛈️ رادار روصو مباشر</span>
+    <!-- وضع الشعار الخاص بك كغطاء فوق علامة الموقع في الزاوية اليسرى العليا -->
+    <div style="position: absolute; top: 5px; left: 5px; width: 60px; height: 60px; z-index: 999; border-radius: 50%; overflow: hidden; border: 2px solid #4CAF50; box-shadow: 0px 2px 5px rgba(0,0,0,0.5);">
+        <img src="./app/static/{LOGO_FILE}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/60/1a1a1a/4CAF50?text=R';">
     </div>
     
     <!-- الخريطة التفاعلية الحية -->
@@ -28,7 +39,6 @@ custom_map_html = """
 </div>
 """
 
-# عرض الخريطة مع غطاء الشعار
 st.components.v1.html(custom_map_html, height=460)
 
 st.write("---")
