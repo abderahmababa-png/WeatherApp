@@ -31,30 +31,30 @@ lon = locations_map[selected_city]["lon"]
 
 st.write("---")
 
-# 2. رادار الأمطار التفاعلي الجديد (خريطة حرة وبدون شعارات تجارية)
+# 2. رادار الأمطار النظيف كلياً بدون إعلانات أو شعارات تجارية
 st.markdown("### 🛰️ رادار الأمطار التفاعلي")
 with st.expander("🗺️ اضغط هنا لفتح/إغلاق الخريطة الحية لرادار السحب والأمطار"):
     st.write(f"عرض الرادار المباشر لنطاق: **{selected_city}**")
     
-    # خريطة رادار متطورة تعتمد على الرصد المفتوح لتجنب الشعارات الإجبارية
+    # استخدام رابط تضمين مطوري الأرصاد النظيف لإخفاء الهوية التجارية تماماً
     custom_map_html = f"""
     <div style="width: 100%; height: 450px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative;">
-        <iframe src="https://www.rainviewer.com/map.html?loc={lat},{lon},8&oRa=1&sm=1&sn=1&co=1&bl=1&hz=0&v=0&vcr=0&vt=1&re=1&cre=1&prm=1&tz=auto" width="100%" height="100%" frameborder="0" style="border:0;"></iframe>
+        <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=8&overlay=rain&product=ecmwf&menu=&message=&marker=0&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default" width="100%" height="100%" frameborder="0" style="border:0;"></iframe>
         
-        <!-- غطاء هوية التطبيق الاحترافي -->
+        <!-- طبقة تغطية وهوية التطبيق الخاصة بك للزاوية اليسرى -->
         <div style="
             position: absolute; 
             bottom: 0; 
             left: 0; 
-            background-color: #111111; 
+            background-color: #1a1a1a; 
             color: #4CAF50; 
-            padding: 8px 15px; 
+            padding: 8px 16px; 
             font-family: Arial, sans-serif; 
-            font-size: 14px; 
+            font-size: 13px; 
             font-weight: bold; 
             border-top-right-radius: 8px; 
-            z-index: 99999;
-            box-shadow: 2px -2px 5px rgba(0,0,0,0.4);
+            z-index: 999999;
+            box-shadow: 2px -2px 6px rgba(0,0,0,0.5);
         ">
             🌤️ Rosso weather
         </div>
