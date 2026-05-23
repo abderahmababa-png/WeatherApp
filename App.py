@@ -32,54 +32,38 @@ lon = locations_map[selected_city]["lon"]
 
 st.write("---")
 
-# 2. رادار الأمطار التفاعلي الديناميكي (يتغير فوراً مع كل مدينة وبدون أي شعارات تجارية)
-st.markdown("### 🛰️ رادار الأمطار التفاعلي")
+# 2. رادار الأمطار ودرجات الحرارة التفاعلي (محدث لحل مشكلة التحديث الحي)
+st.markdown("### 🛰️ رادار الأمطار والحرارة التفاعلي")
 with st.expander("🗺️ اضغط هنا لفتح/إغلاق الخريطة الحية لرادار السحب والأمطار"):
     st.write(f"عرض الرادار المباشر لنطاق: **{selected_city}**")
     
-    # استخدام خريطة خرائطية مفتوحة المصدر ومدمجة بطبقة رادار الطقس العالمي النظيف
-    # قمنا بدمج متغيرات خطوط الطول والعرض لضمان قفز الخريطة فوراً إلى المدينة المحددة
+    # هنا تم ربط رابط Windy بآلية تحديث قسرية عبر تضمين اسم المدينة لمنع تجمد الخريطة
+    # وتم تفعيل طبقة الأمطار والبرق (overlay=rain) مع إظهار درجات الحرارة والضغط والبيانات الرقمية كاملة
     custom_map_html = f"""
-    <div style="width: 100%; height: 450px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative;">
-        <iframe src="https://maps.google.com/maps?q={lat},{lon}&z=10&output=embed&iwloc=near" width="100%" height="100%" frameborder="0" style="border:0; filter: contrast(1.1) saturate(1.2);"></iframe>
+    <div style="width: 100%; height: 500px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative;">
+        <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=8&overlay=rain&product=ecmwf&menu=&message=true&marker=&calendar=now&pressure=true&type=map&location=coordinates&detail=true&metricWind=default&metricTemp=default&city={selected_city}" width="100%" height="100%" frameborder="0" style="border:0;"></iframe>
         
-        <!-- غطاء علوي لحجب أي تفاصيل غير مرغوبة -->
-        <div style="
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            width: 100%;
-            height: 45px;
-            background-color: rgba(255, 255, 255, 0.9);
-            z-index: 99999;
-            display: flex;
-            align-items: center;
-            padding-left: 15px;
-            border-bottom: 1px solid #ddd;
-        ">
-            <span style="color: #4CAF50; font-family: Arial; font-size: 14px; font-weight: bold;">🌤️ Rosso Weather Radar: {selected_city}</span>
-        </div>
-
-        <!-- غطاء سفلي احترافي للهوية الشخصية للتطبيق -->
+        <!-- غطاء سفلي احترافي للهوية الشخصية للتطبيق لإخفاء الروابط التجارية المزعجة أسفل الخريطة -->
         <div style="
             position: absolute; 
             bottom: 0; 
             left: 0; 
-            background-color: #222222; 
+            background-color: #191919; 
             color: #4CAF50; 
-            padding: 8px 18px; 
+            padding: 6px 15px; 
             font-family: Arial, sans-serif; 
             font-size: 13px; 
             font-weight: bold; 
             border-top-right-radius: 8px; 
-            z-index: 999999;
-            box-shadow: 2px -2px 6px rgba(0,0,0,0.4);
+            z-index: 9999;
+            box-shadow: 2px -2px 5px rgba(0,0,0,0.5);
         ">
-            🛰️ طقس روصو الذكي
+            🌤️ Rosso weather
         </div>
     </div>
     """
-    components.html(custom_map_html, height=450)
+    # تمرير الحاوية مع كود الـ HTML
+    components.html(custom_map_html, height=500)
 
 st.write("---")
 
