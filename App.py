@@ -1,4 +1,19 @@
 import streamlit as st
+
+# كود برمي لمنع تحديث الصفحة وإلغاء علامة السحب لأسفل (Pull-to-refresh) في تطبيق الأندرويد
+st.markdown(
+    """
+    <style>
+    html, body, [data-testid="stAppViewContainer"] {
+        overscroll-behavior-y: contain !important;
+        touch-action: pan-x pan-y !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+import streamlit as st
 import requests
 import os
 import streamlit.components.v1 as components
