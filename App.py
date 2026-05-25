@@ -1,4 +1,8 @@
 import streamlit as st
+import requests
+import os
+import streamlit.components.v1 as components
+import urllib.parse  # مضافة لترميز نصوص المشاركة بأمان
 
 # كود برمي لمنع تحديث الصفحة وإلغاء علامة السحب لأسفل (Pull-to-refresh) في تطبيق الأندرويد
 st.markdown(
@@ -12,11 +16,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
-import streamlit as st
-import requests
-import os
-import streamlit.components.v1 as components
 
 st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
@@ -52,7 +51,6 @@ st.markdown("### 🛰️ رادار الأمطار التفاعلي")
 with st.expander("🗺️ اضغط هنا لفتح/إغلاق الخريطة الحية لرادار السحب والأمطار"):
     st.write(f"عرض الرادار المباشر لنطاق: **{selected_city}**")
     
-    # استخدام حاوية بـ overflow مخفي وقص أطراف الـ iframe للتخلص من شريط الألوان العلوي وشعار Windy والقائمة البيضاء
     custom_map_html = f"""
     <div style="width: 100%; height: 400px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative; background-color: #1a1a1a;">
         <div style="width: 100%; height: 100%; top: -45px; position: absolute;">
@@ -64,7 +62,6 @@ with st.expander("🗺️ اضغط هنا لفتح/إغلاق الخريطة ا�
             </iframe>
         </div>
         
-        <!-- ملصق هوية تطبيقك الثابت والأنيق في أعلى اليمين بشكل مستقل -->
         <div style="
             position: absolute; 
             top: 10px; 
@@ -110,10 +107,24 @@ if st.button("توليد التدوينة الجوية"):
             max_t = max(temps)
             min_t = min(temps)
             avg_rh = sum(data["relative_humidity_700hPa"][:h]) / h
+            max_wind = max(data["wind_speed_10m"][:h]) # جلب سرعة الرياح للميزة الجديدة
             
             c1, c2 = st.columns(2)
             c1.metric(f"العظمى في {selected_city}", f"{max_t:.1f}°C")
             c2.metric("إجمالي الأمطار المرتقب", f"{precip:.1f} ملم")
+            
+            # --- ميزة مضافة 1: واجهة نصائح اليوم الذكية (if/else بناءً على البيانات الفعلية) ---
+            st.markdown("### 💡 إرشادات ونصائح اليوم الحصرية:")
+            if precip > 2:
+                st.warning("⚠️ **تنبيه الخريف والأمطار:** يُتوقع هطول أمطار معتبرة. يرجى من السائقين توخي الحذر من المستنقعات على محاور الطرق، وللمزارعين أخذ الاحتياطات اللازمة.")
+            elif max_wind > 25:
+                st.info("💨 **تنبيه نشاط الرياح:** الرياح السطحية نشطة وقد تثير الأتربة؛ يُنصح بحماية محركات السيارات وإغلاق النوافذ لمنع دخول الغبار العالق.")
+            elif max_t > 38:
+                st.error("☀️ **تنبيه موجة حر:** الأجواء شديدة الحرارة اليوم؛ يرجى تجنب التعرض المباشر لأشعة الشمس في أوقات الذروة والإكثار من شرب السوائل.")
+            else:
+                st.success("🌱 **أجواء مستقرة:** الطقس معتدل ومستقر بوجه عام ومناسب للأنشطة الخارجية المختلفة.")
+            
+            st.write("---")
             
             st.markdown("### 📝 تدوينة الخبير الأرصادي:")
             
@@ -130,19 +141,44 @@ if st.button("توليد التدوينة الجوية"):
                 moisture_influence = "برغم سيطرة كتل هوائية جافة نسبياً في طبقات الجو المتوسطة تحد من الامتداد الشاقولي للسحب."
 
             if precip > 0:
-                blog = f"""
-                توضح تحديثات النماذج العددية لنطاق **{selected_city}** {time_context} مؤشرات على اضطرابات جوية محتملة. {trend_context}
+                blog = f"""توضح تحديثات النماذج العددية لنطاق **{selected_city}** {time_context} مؤشرات على اضطرابات جوية محتملة. {trend_context}
                 
-                {moisture_influence} وبناءً عليه، تضع النماذج فرصة هطول مطري تصل ذروة احتماليتها إلى **{prob}%**، بتراكم إجمالي مرتقب يبلغ **{precip:.1f} ملم**، مما يعزز من فرص نشوء سحب ركامية رعدية على فترات.
-                """
+{moisture_influence} وبناءً عليه، تضع النماذج فرصة هطول مطري تصل ذروة احتماليتها إلى **{prob}%**، بتراكم إجمالي مرتقب يبلغ **{precip:.1f} ملم**، مما يعزز من فرص نشوء سحب ركامية رعدية على فترات."""
             else:
-                blog = f"""
-                تُشير التنبؤات الجوية لنطاق **{selected_city}** {time_context} إلى سيطرة أجواء مستقرة بوجه عام. {trend_context}
+                blog = f"""تُشير التنبؤات الجوية لنطاق **{selected_city}** {time_context} إلى سيطرة أجواء مستقرة بوجه عام. {trend_context}
                 
-                {moisture_influence} وبالتالي تبقى فرص الهطول الفعلي منعدمة عند **0.0 ملم** مع تراجع احتمالية الأمطار لـ **{prob}%**، مع نشاط معتدل للرياح السطحية قد يثير بعض الأتربة العالقة في المناطق المكشوفة.
-                """
+{moisture_influence} وبالتالي تبقى فرص الهطول الفعلي منعدمة عند **0.0 ملم** مع تراجع احتمالية الأمطار لـ **{prob}%**، مع نشاط معتدل للرياح السطحية قد يثير بعض الأتربة العالقة في المناطق المكشوفة."""
             
             st.info(blog)
+            
+            # --- ميزة مضافة 2: زر مشاركة حالة الطقس على واتساب لنشر التطبيق ورابط التحميل المثبت ---
+            st.write("---")
+            share_text = f"🌤️ طقس {selected_city} اليوم:\n- الحرارة العظمى: {max_t:.1f}°C\n- الأمطار: {precip:.1f} ملم\n\n👇 لمتابعة رادار السحب والأمطار في موريتانيا، حمل تطبيقنا برابط مباشر APK من هنا:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
+            encoded_text = urllib.parse.quote(share_text)
+            whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_text}"
+            
+            st.markdown(
+                f"""
+                <div style="text-align: center;">
+                    <a href="{whatsapp_url}" target="_blank" style="text-decoration: none;">
+                        <button style="
+                            background-color: #25D366; 
+                            color: white; 
+                            border: none; 
+                            padding: 10px 20px; 
+                            font-size: 16px; 
+                            font-weight: bold; 
+                            border-radius: 8px; 
+                            cursor: pointer;
+                            box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+                        ">
+                            🟢 شارك حالة الطقس ورابط التطبيق عبر WhatsApp
+                        </button>
+                    </a>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
             
         except Exception as e:
             st.error("حدث خطأ أثناء معالجة بيانات النموذج الرقمي.")
