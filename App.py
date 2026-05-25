@@ -95,26 +95,32 @@ st.write("---")
 if st.button("📊 توليد وتحليل التدوينة الجوية", use_container_width=True):
     with st.spinner(f"جاري معالجة خرائط ونماذج {selected_city}..."):
         try:
-            # تم تعديل الرابط ليعمل بشكل تلقائي ومستقر للمدى الطويل (16 يوماً) لجميع المواقع دون مشاكل توافقية
+            # استخدام الرابط المخصص للمدى الطويل وعمل فحص للاستجابة
             url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16"
             
-            response = requests.get(url).json()
-            
-            if "hourly" in response:
-                data = response["hourly"]
-                h = period_map[period]
+            # إذا طلب المستخدم 10 أو 16 يوماً، يتم تحويل الطلب تلقائياً إلى خادم المدى الطويل لتجنب خطأ الـ API
+            h = period_map[period]
+            if h > 120:
+                url = f"https://api.open-meteo.com/v1/gfs?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16"
                 
-                # فحص للتأكد من أن البيانات المستلمة تغطي الساعات المطلوبة لمنع خطأ الـ Index
+            response = requests.get(url)
+            
+            if response.status_code == 200:
+                data = response.json()["hourly"]
+                
+                # فحص الحجم الفعلي للمصفوفات لتفادي قراءة مؤشر غير موجود
                 available_hours = len(data["temperature_2m"])
                 actual_h = min(h, available_hours)
                 
                 temps = data["temperature_2m"][:actual_h]
                 precip = sum([x for x in data["precipitation"][:actual_h] if x])
-                prob = max(data["precipitation_probability"][:actual_h]) if data["precipitation_probability"] else 0
+                prob = max(data["precipitation_probability"][:actual_h]) if "precipitation_probability" in data and data["precipitation_probability"] else 0
                 max_t = max(temps)
                 min_t = min(temps)
-                avg_rh = sum(data["relative_humidity_700hPa"][:actual_h]) / actual_h if data["relative_humidity_700hPa"] else 0
-                max_wind = max(data["wind_speed_10m"][:actual_h]) if data["wind_speed_10m"] else 0
+                
+                # التعامل مع الرطوبة والرياح بشكل آمن في حال عدم توفرها في بعض النماذج الطويلة
+                avg_rh = sum(data["relative_humidity_700hPa"][:actual_h]) / actual_h if "relative_humidity_700hPa" in data and data["relative_humidity_700hPa"] else 0
+                max_wind = max(data["wind_speed_10m"][:actual_h]) if "wind_speed_10m" in data and data["wind_speed_10m"] else 0
                 
                 # عرض المؤشرات الأساسية
                 c1, c2 = st.columns(2)
@@ -190,7 +196,7 @@ if st.button("📊 توليد وتحليل التدوينة الجوية", use_c
                     unsafe_allow_html=True
                 )
             else:
-                st.error("استجابة غير صالحة من خادم النماذج الجوية، يرجى المحاولة مرة أخرى لاحقاً.")
+                st.error(f"استجابة غير صالحة من خادم النماذج الجوية (رمز الخطأ: {response.status_code})")
             
         except Exception as e:
-            st.error("حدث خطأ داخلي أثناء معالجة وقراءة بيانات التوقعات.")
+            st.error(f"حدث خطأ أثناء معالجة البيانات: {str(e)}")
