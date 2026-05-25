@@ -1,74 +1,141 @@
 import streamlit as st
 import requests
 import pandas as pd
+from datetime import datetime
 
-# إعدادات الصفحة
-st.set_page_config(page_title="روصو للطقس - Rosso Weather", page_icon="🌤️", layout="wide")
+# 1. إعدادات الصفحة العامة واختيار المظهر الواسع
+st.set_page_config(
+    page_title="منصة طقس روصو والترارزة",
+    page_icon="⛈️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- 1. الشريط الجانبي (Sidebar) لمواقيت الصلاة ---
+# تحسين مظهر الجدول والقوائم عبر CSS مخصص لتناسب الواجهة العربية
+st.markdown("""
+    <style>
+    .reportview-container .main .block-container { direction: rtl; }
+    .sidebar .sidebar-content { direction: rtl; }
+    th, td { text-align: right !important; }
+    </style>
+""", unsafe_allow_html=True)
+
+
+# 2. إعداد بيانات المدن والمقاطعات في ولاية الترارزة
+CITIES = {
+    "روصو (العاصمة)": {"lat": 16.5165, "lon": -15.8050},
+    "المذرذرة": {"lat": 16.9200, "lon": -15.7900},
+    "اركيز": {"lat": 16.9150, "lon": -15.2830},
+    "بوتلميت": {"lat": 17.5480, "lon": -14.7350},
+    "كرمسين": {"lat": 16.4950, "lon": -16.2550},
+    "تكنت": {"lat": 17.1600, "lon": -16.0100}
+}
+
+
+# --- 3. الشريط الجانبي (Sidebar) ---
 with st.sidebar:
-    st.markdown("<h2 style='text-align: center;'>🕋 مواقيت الصلاة</h2>", unsafe_allow_title=True)
-    st.markdown("<p style='text-align: center; color: gray;'>مدينة روصو وضواحيها</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>🕋 مواقيت الصلاة</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>التوقيت المحلي لمدينة روصو وضواحيها</p>", unsafe_allow_html=True)
     st.write("---")
     
-    # عرض المواقيت في جدول منظم وأنيق يناسب الشريط الجانبي
-    timings = {
+    # عرض المواقيت في جدول مدمج وبسيط لا يأخذ مساحة عمودية كبيرة
+    prayer_data = {
         "الصلاة": ["الفجر", "الظهر", "العصر", "المغرب", "العشاء"],
         "الوقت": ["05:05", "13:00", "16:15", "19:30", "20:45"]
     }
-    df_pray = pd.DataFrame(timings)
-    st.table(df_pray.set_index("الصلاة"))
+    df_prayer = pd.DataFrame(prayer_data)
+    st.table(df_prayer.set_index("الصلاة"))
     
     st.write("---")
-    st.caption("ملاحظة: يرجى مراعاة فروق التوقيت المحلية.")
+    
+    # إضافة خيار اختيار المدينة داخل الشريط الجانبي أيضاً لتنظيف الواجهة الرئيسية
+    st.markdown("### 📍 تحديد الموقع")
+    selected_city = st.selectbox("اختر المقاطعة أو المركز المُراد رصده:", list(CITIES.keys()))
+    
+    st.write("---")
+    st.caption(f"آخر تحديث للواجهة: {datetime.now().strftime('%H:%M')}")
 
-# --- 2. القسم الرئيسي للتطبيق (Main Page) ---
-st.title("🌤️ منصة طقس روصو الرقمية")
-st.markdown("متابعة حية ومباشرة للحالة الجوية في عاصمة ولاية الترارزة بناءً على الأرصاد الفعلية.")
+
+# --- 4. القسم الرئيسي للتطبيق (Main Page) ---
+st.title("🌤️ منصة طقس روصو الرقمية (Rosso Weather)")
+st.markdown(f"متابعة حية ومباشرة للحالة الجوية الحالية وتوقعات الأمطار في **{selected_city}** بناءً على الأرصاد الفعلية ونماذج الطقس العالمية.")
 st.write("---")
 
-# إحداثيات مدينة روصو
-LAT, LON = 16.5165, -15.8050
+# جلب الإحداثيات بناءً على اختيار المستخدم
+lat = CITIES[selected_city]["lat"]
+lon = CITIES[selected_city]["lon"]
 
-# جلب بيانات الطقس الحية من API موثوق (بدون توقعات عشوائية أو غبار غير مرئي)
-@st.cache_data(ttl=600)  # تخزين مؤقت للبيانات لمدة 10 دقائق
-def get_live_weather(lat, lon):
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true&hourly=rain,relative_humidity_2m"
+
+# 5. دالة جلب بيانات الطقس الحقيقية من Open-Meteo API
+@st.cache_data(ttl=600)  # تحديث التخزين المؤقت كل 10 دقائق
+def fetch_weather_data(latitude, longitude):
+    # نطلب بيانات الطقس الحالي + توقعات المطر والرطوبة لكل ساعة لـ 24 ساعة القادمة
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true&hourly=temperature_2m,rain,precipitation_probability,relative_humidity_2m&timezone=Africa/Nouakchott"
     try:
-        response = requests.get(url).json()
-        return response['current_weather'], response['hourly']
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json()
+        return None
     except:
-        return None, None
+        return None
 
-current, hourly = get_live_weather(LAT, LON)
+weather_json = fetch_weather_data(lat, lon)
 
-if current:
-    # عرض المؤشرات الأساسية للطقس الحالي
-    col1, col2, col3 = st.columns(3)
+if weather_json:
+    # أ. استخراج بيانات الطقس الحالي
+    current = weather_json["current_weather"]
     
+    # تحويل كود الطقس الرقمي إلى وصف نصي واقعي ومباشر
+    weather_codes = {
+        0: "سماء صافية مستقرة", 1: "صافي غالباً", 2: "غائم جزئياً", 3: "غائم بالكامل",
+        51: "رذاذ خفيف", 53: "رذاذ معتدل", 61: "أمطار خفيفة", 63: "أمطار معتدلة", 
+        65: "أمطار غزيرة", 80: "زخات مطر خفيفة", 81: "زخات مطر قوية"
+    }
+    status_desc = weather_codes.get(current["weathercode"], "مستقر")
+
+    # ب. عرض المؤشرات الحالية في أعمدة جذابة ومباشرة
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric(label="🌡️ درجة الحرارة الحالية", value=f"{current['temperature']} °C")
     with col2:
-        # تحويل كود الطقس إلى وصف واقعي بسيط
-        weather_desc = "صافي ومستقر" if current['weathercode'] == 0 else "غائم جزئياً" if current['weathercode'] in [1,2,3] else "أمطار"
-        st.metric(label="📊 حالة السماء الحالية", value=weather_desc)
+        st.metric(label="📊 الحالة الرصدية الفعلية", value=status_desc)
     with col3:
         st.metric(label="💨 سرعة الرياح", value=f"{current['windspeed']} كم/س")
-        
+    with col4:
+        # جلب الرطوبة الحالية من أول قراءة متاح في التوقعات الساعية
+        current_humidity = weather_json["hourly"]["relative_humidity_2m"][0]
+        st.metric(label="💧 نسبة الرطوبة", value=f"{current_humidity}%")
+
     st.write("---")
+
+    # ج. قسم توقعات الأمطار للساعات القادمة (مهم جداً لمراقبة الخريف)
+    st.subheader("⛈️ جدول رصد توقعات الأمطار (خلال الساعات القادمة)")
     
-    # --- 3. قسم خريطة الرادار التفاعلية (Windy / Radar Layers) ---
-    st.subheader("🗺️ الرادار المباشر وحركة السحب")
+    hourly_data = weather_json["hourly"]
+    # تحويل البيانات إلى dataframe وعرض الساعات الـ 6 القادمة فقط للاختصار والدقة
+    df_hourly = pd.DataFrame({
+        "الوقت": [t.split("T")[1] for t in hourly_data["time"][:6]],
+        "درجة الحرارة (°C)": hourly_data["temperature_2m"][:6],
+        "احتمالية المطر (%)": hourly_data["precipitation_probability"][:6],
+        "كمية المطر المتوقعة (ملم)": hourly_data["rain"][:6]
+    })
     
-    # تضمين خريطة تفاعلية لـ Windy تركز على منطقة روصو وجنوب موريتانيا
-    # يمكنك تغيير الـ overlay إلى 'rain' لمتابعة السحب الممطرة في الخريف
-    windy_url = f"https://embed.windy.com/embed2.html?lat={LAT}&lon={lon}&detailLat={LAT}&detailLon={lon}&width=700&height=450&zoom=8&level=surface&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1"
+    st.dataframe(df_hourly.set_index("الوقت"), use_container_width=True)
     
-    st.components.v1.iframe(windy_url, height=450, scrolling=False)
+    st.write("---")
+
+    # د. قسم خريطة الرادار التفاعلية المباشرة (Windy)
+    st.subheader("🗺️ الرادار المباشر وحركة السحب والأمطار")
+    st.markdown("الرادار مضبوط تلقائياً على نموذج **ECMWF** الأوروبي لمتابعة الجبهات الماطرة وجبهات السحب الحية فوق المنطقة جنوب موريتانيا.")
+    
+    # تضمين خريطة Windy التفاعلية مع تمرير إحداثيات المدينة المختارة ديناميكياً
+    windy_iframe_url = f"https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&detailLat={lat}&detailLon={lon}&width=1000&height=500&zoom=8&level=surface&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1"
+    
+    st.components.v1.iframe(windy_iframe_url, height=500, scrolling=False)
 
 else:
-    st.error("عذراً، تعذر الاتصال بمزود بيانات الطقس حالياً. يرجى إعادة المحاولة لاحقاً.")
+    st.error("عذراً، فشل التطبيق في الاتصال بـ API الأرصاد الجوية. يرجى التحقق من اتصال الإنترنت أو المحاولة لاحقاً.")
 
-# تثبيت تذييل الصفحة
-st.markdown("---")
-st.markdown("<p style='text-align: center; color: gray;'>تطبيق Rosso Weather - بيانات دقيقة ومباشرة من الرادار</p>", unsafe_allow_html=True)
+# تذييل الصفحة وثبات الهوية الموثوقة للتطبيق
+st.write("---")
+st.markdown("<p style='text-align: center; color: gray;'>تطبيق Rosso Weather - بيانات مرصودة حقيقية خالية من التخمين</p>", unsafe_allow_html=True)
