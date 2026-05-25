@@ -145,4 +145,41 @@ if st.button("📊 توليد وتحليل التدوينة الجوية", use_c
             if precip > 2:
                 st.warning("⚠️ **تنبيه الخريف والأمطار:** يُتوقع هطول أمطار معتبرة. يرجى من السائقين توخي الحذر من المستنقعات على محاور الطرق، وللمزارعين أخذ الاحتياطات اللازمة.")
             elif max_wind > 25:
-                st.info("💨 **تنبيه نشاط الرياح:** الرياح
+                st.info("💨 **تنبيه نشاط الرياح:** الرياح السطحية نشطة وقد تثير الأتربة؛ يُنصح بحماية محركات السيارات وإغلاق النوافذ لمنع دخول الغبار العالق.")
+            elif max_t > 38:
+                st.error("☀️ **تنبيه موجة حر:** الأجواء شديدة الحرارة اليوم؛ يرجى تجنب التعرض المباشر لأشعة الشمس في أوقات الذروة والإكثار من شرب السوائل.")
+            else:
+                st.success("🌱 **أجواء مستقرة:** الطقس معتدل ومستقر بوجه عام ومناسب للأنشطة الخارجية المختلفة.")
+            
+            # 🔘 ثالثاً: زر مشاركة الطقس في الأسفل تماماً
+            st.write("---")
+            share_text = f"🌤️ طقس {selected_city} اليوم:\n- الحرارة العظمى: {max_t:.1f}°C\n- الأمطار: {precip:.1f} ملم\n\n👇 لمتابعة رادار السحب والأمطار في موريتانيا، حمل تطبيقنا برابط مباشر APK من هنا:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
+            encoded_text = urllib.parse.quote(share_text)
+            whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_text}"
+            
+            st.markdown(
+                f"""
+                <div style="text-align: center;">
+                    <a href="{whatsapp_url}" target="_blank" style="text-decoration: none;">
+                        <button style="
+                            background-color: #25D366; 
+                            color: white; 
+                            border: none; 
+                            padding: 12px 24px; 
+                            font-size: 15px; 
+                            font-weight: bold; 
+                            border-radius: 8px; 
+                            cursor: pointer;
+                            box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+                            width: 100%;
+                        ">
+                            🟢 إرسال ملخص الطقس ورابط التطبيق عبر WhatsApp
+                        </button>
+                    </a>
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
+            
+        except Exception as e:
+            st.error("حدث خطأ أثناء معالجة بيانات النموذج الرقمي.")
