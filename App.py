@@ -4,7 +4,7 @@ import os
 import streamlit.components.v1 as components
 import urllib.parse
 
-# منع تحديث الصفحة عند السحب لأسفل في الأندرويد
+# كود يمنع تداخل اللمس والسحب بين تطبيق الأندرويد والخريطة التفاعلية
 st.markdown(
     """
     <style>
@@ -12,12 +12,15 @@ st.markdown(
         overscroll-behavior-y: contain !important;
         touch-action: pan-x pan-y !important;
     }
-    /* تنسيق مخصص للأزرار الجانبية متناسق مع لون الشعار الأخضر */
     .stButton>button {
         background-color: #4CAF50 !important;
         color: white !important;
         border-radius: 6px !important;
         border: none !important;
+    }
+    /* تحسين استجابة حاوية المكونات الذكية */
+    iframe {
+        pointer-events: auto !important;
     }
     </style>
     """,
@@ -35,7 +38,7 @@ if os.path.exists(LOGO_FILE):
 st.markdown("<h1 style='text-align: center; color: #4CAF50; font-family: Arial;'>طقس روصو Rosso weather</h1>", unsafe_allow_html=True)
 st.write("---")
 
-# 1. قسم تحديد الموقع والمدى الزمني (في صف واحد متناسق)
+# 1. قسم تحديد الموقع والمدى الزمني
 st.markdown("### 📍 الإعدادات الجغرافية والزمنية")
 locations_map = {
     "روصو": {"lat": 16.51, "lon": -15.81},
@@ -62,26 +65,29 @@ lon = locations_map[selected_city]["lon"]
 st.write("")
 col_btn, col_empty = st.columns([1, 2])
 with col_btn:
-    show_radar = st.checkbox("🗺️ رادار الأمطار الحية", value=False)
+    show_radar = st.checkbox("🛰️ رادار الأمطار الحية", value=False)
 
-# عرض الرادار النظيف فقط إذا تم تفعيل الزر الجانبي الصغير
+# عرض الرادار النظيف والمحمي من مشاكل التحريك العشوائي
 if show_radar:
+    st.markdown(f"<p style='color:#4CAF50; font-weight:bold; margin-bottom:5px;'>🗺️ رادار الأمطار الحية (النموذج الأوروبي ECMWF) - نطاق {selected_city}</p>", unsafe_allow_html=True)
+    
+    # كود معالج لمنع مشاكل اللمس والتكبير خارج نطاق الخريطة في الأندرويد
     custom_map_html = f"""
-    <div style="width: 100%; height: 350px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative; background-color: #1a1a1a; margin-top: 10px;">
+    <div style="width: 100%; height: 380px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative; background-color: #1a1a1a; touch-action: auto;">
         <div style="width: 100%; height: 100%; top: -45px; position: absolute;">
-            <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=8&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=true&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&v={selected_city}" 
+            <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=8&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=true&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default" 
                     width="100%" 
-                    height="440px" 
+                    height="470px" 
                     frameborder="0" 
-                    style="border:0; clip-path: inset(45px 0px 45px 0px);">
+                    style="border:0; clip-path: inset(45px 0px 45px 0px); pointer-events: auto;">
             </iframe>
         </div>
-        <div style="position: absolute; top: 10px; right: 10px; background-color: rgba(26, 26, 26, 0.85); color: #4CAF50; padding: 5px 12px; font-family: Arial; font-size: 11px; font-weight: bold; border-radius: 5px; z-index: 999999; direction: rtl;">
-            🌤️ رادار {selected_city}
+        <div style="position: absolute; top: 10px; right: 10px; background-color: rgba(26, 26, 26, 0.9); color: #4CAF50; padding: 6px 14px; font-family: Arial; font-size: 12px; font-weight: bold; border-radius: 5px; z-index: 9999; direction: rtl; border: 1px solid #4CAF50;">
+            🛰️ التوقع الأوروبي الحـي
         </div>
     </div>
     """
-    components.html(custom_map_html, height=360)
+    components.html(custom_map_html, height=390)
 
 st.write("---")
 
@@ -134,46 +140,9 @@ if st.button("📊 توليد وتحليل التدوينة الجوية", use_c
             
             st.info(blog)
             
-            # 🔘 ثانياً: الإرشادات والنصائح الذكية (تأتي مرتبة بعد التدوينة مباشرة)
+            # 🔘 ثانياً: الإرشادات والنصائح الذكية
             st.markdown("### 💡 الإرشادات والنصائح اليومية:")
             if precip > 2:
                 st.warning("⚠️ **تنبيه الخريف والأمطار:** يُتوقع هطول أمطار معتبرة. يرجى من السائقين توخي الحذر من المستنقعات على محاور الطرق، وللمزارعين أخذ الاحتياطات اللازمة.")
             elif max_wind > 25:
-                st.info("💨 **تنبيه نشاط الرياح:** الرياح السطحية نشطة وقد تثير الأتربة؛ يُنصح بحماية محركات السيارات وإغلاق النوافذ لمنع دخول الغبار العالق.")
-            elif max_t > 38:
-                st.error("☀️ **تنبيه موجة حر:** الأجواء شديدة الحرارة اليوم؛ يرجى تجنب التعرض المباشر لأشعة الشمس في أوقات الذروة والإكثار من شرب السوائل.")
-            else:
-                st.success("🌱 **أجواء مستقرة:** الطقس معتدل ومستقر بوجه عام ومناسب للأنشطة الخارجية المختلفة.")
-            
-            # 🔘 ثالثاً: زر مشاركة الطقس في الأسفل تماماً
-            st.write("---")
-            share_text = f"🌤️ طقس {selected_city} اليوم:\n- الحرارة العظمى: {max_t:.1f}°C\n- الأمطار: {precip:.1f} ملم\n\n👇 لمتابعة رادار السحب والأمطار في موريتانيا، حمل تطبيقنا برابط مباشر APK من هنا:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
-            encoded_text = urllib.parse.quote(share_text)
-            whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_text}"
-            
-            st.markdown(
-                f"""
-                <div style="text-align: center;">
-                    <a href="{whatsapp_url}" target="_blank" style="text-decoration: none;">
-                        <button style="
-                            background-color: #25D366; 
-                            color: white; 
-                            border: none; 
-                            padding: 12px 24px; 
-                            font-size: 15px; 
-                            font-weight: bold; 
-                            border-radius: 8px; 
-                            cursor: pointer;
-                            box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
-                            width: 100%;
-                        ">
-                            🟢 إرسال ملخص الطقس ورابط التطبيق عبر WhatsApp
-                        </button>
-                    </a>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-            
-        except Exception as e:
-            st.error("حدث خطأ أثناء معالجة بيانات النموذج الرقمي.")
+                st.info("💨 **تنبيه نشاط الرياح:** الرياح
