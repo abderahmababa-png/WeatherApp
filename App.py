@@ -2,15 +2,22 @@ import streamlit as st
 import requests
 import os
 import streamlit.components.v1 as components
-import urllib.parse  # مضافة لترميز نصوص المشاركة بأمان
+import urllib.parse
 
-# كود برمي لمنع تحديث الصفحة وإلغاء علامة السحب لأسفل (Pull-to-refresh) في تطبيق الأندرويد
+# منع تحديث الصفحة عند السحب لأسفل في الأندرويد
 st.markdown(
     """
     <style>
     html, body, [data-testid="stAppViewContainer"] {
         overscroll-behavior-y: contain !important;
         touch-action: pan-x pan-y !important;
+    }
+    /* تنسيق مخصص للأزرار الجانبية متناسق مع لون الشعار الأخضر */
+    .stButton>button {
+        background-color: #4CAF50 !important;
+        color: white !important;
+        border-radius: 6px !important;
+        border: none !important;
     }
     </style>
     """,
@@ -19,16 +26,17 @@ st.markdown(
 
 st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
-# الشعار
+# الشعار (دائري مع إطار أخضر)
 LOGO_FILE = "1779505332712.jpg"
-st.markdown("<style>.stImage img {border-radius: 50%; border: 3px solid #4CAF50; max-width: 150px; margin: 0 auto; display: block;}</style>", unsafe_allow_html=True)
-if os.path.exists(LOGO_FILE): st.image(LOGO_FILE)
+st.markdown("<style>.stImage img {border-radius: 50%; border: 3px solid #4CAF50; max-width: 130px; margin: 0 auto; display: block;}</style>", unsafe_allow_html=True)
+if os.path.exists(LOGO_FILE): 
+    st.image(LOGO_FILE)
 
-st.markdown("<h1 style='text-align: center;'>طقس روصو Rosso weather</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #4CAF50; font-family: Arial;'>طقس روصو Rosso weather</h1>", unsafe_allow_html=True)
 st.write("---")
 
-# 1. قائمة تحديد الموقع الجغرافي (مقاطعات الترارزة)
-st.markdown("### 📍 تحديد الموقع الجغرافي")
+# 1. قسم تحديد الموقع والمدى الزمني (في صف واحد متناسق)
+st.markdown("### 📍 الإعدادات الجغرافية والزمنية")
 locations_map = {
     "روصو": {"lat": 16.51, "lon": -15.81},
     "اركيز": {"lat": 16.91, "lon": -15.28},
@@ -40,62 +48,46 @@ locations_map = {
     "انجاكو": {"lat": 16.29, "lon": -16.45}
 }
 
-selected_city = st.selectbox("اختر النطاق المراد تحليله:", list(locations_map.keys()))
+col_city, col_time = st.columns(2)
+with col_city:
+    selected_city = st.selectbox("اختر المقاطعة:", list(locations_map.keys()))
+with col_time:
+    period_map = {"24 ساعة": 24, "5 أيام": 120, "10 أيام": 240, "16 يوماً": 384}
+    period = st.selectbox("المدى الزمني للتحليل:", list(period_map.keys()))
+
 lat = locations_map[selected_city]["lat"]
 lon = locations_map[selected_city]["lon"]
 
-st.write("---")
+# التحكم في الخريطة بشكل جانبي وصغير
+st.write("")
+col_btn, col_empty = st.columns([1, 2])
+with col_btn:
+    show_radar = st.checkbox("🗺️ رادار الأمطار الحية", value=False)
 
-# 2. رادار الأمطار النظيف كلياً بتقنية القص الرقمي لمنع ظهور أي شعارات أو مساحات بيضاء
-st.markdown("### 🛰️ رادار الأمطار التفاعلي")
-with st.expander("🗺️ اضغط هنا لفتح/إغلاق الخريطة الحية لرادار السحب والأمطار"):
-    st.write(f"عرض الرادار المباشر لنطاق: **{selected_city}**")
-    
+# عرض الرادار النظيف فقط إذا تم تفعيل الزر الجانبي الصغير
+if show_radar:
     custom_map_html = f"""
-    <div style="width: 100%; height: 400px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative; background-color: #1a1a1a;">
+    <div style="width: 100%; height: 350px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative; background-color: #1a1a1a; margin-top: 10px;">
         <div style="width: 100%; height: 100%; top: -45px; position: absolute;">
-            <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=9&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=true&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&v={selected_city}" 
+            <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=8&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=true&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&v={selected_city}" 
                     width="100%" 
-                    height="490px" 
+                    height="440px" 
                     frameborder="0" 
                     style="border:0; clip-path: inset(45px 0px 45px 0px);">
             </iframe>
         </div>
-        
-        <div style="
-            position: absolute; 
-            top: 10px; 
-            right: 10px; 
-            background-color: rgba(26, 26, 26, 0.85); 
-            color: #4CAF50; 
-            padding: 5px 12px; 
-            font-family: Arial, sans-serif; 
-            font-size: 12px; 
-            font-weight: bold; 
-            border-radius: 5px; 
-            z-index: 999999;
-            direction: rtl;
-        ">
-            🌤️ رادار طقس روصو
+        <div style="position: absolute; top: 10px; right: 10px; background-color: rgba(26, 26, 26, 0.85); color: #4CAF50; padding: 5px 12px; font-family: Arial; font-size: 11px; font-weight: bold; border-radius: 5px; z-index: 999999; direction: rtl;">
+            🌤️ رادار {selected_city}
         </div>
     </div>
     """
-    components.html(custom_map_html, height=400)
+    components.html(custom_map_html, height=360)
 
 st.write("---")
 
-# 3. قسم معالجة النماذج العددية وتوليد التدوينة
-st.subheader("📊 ملخص التوقعات وتحليل المنظومة")
-period_map = {
-    "24 ساعة": 24,
-    "5 أيام": 120,
-    "10 أيام": 240,
-    "16 يوماً": 384
-}
-period = st.selectbox("المدى الزمني:", list(period_map.keys()))
-
-if st.button("توليد التدوينة الجوية"):
-    with st.spinner(f"جاري معالجة خرائط {selected_city}..."):
+# 2. زر معالجة البيانات وتوليد النتائج والمرئيات
+if st.button("📊 توليد وتحليل التدوينة الجوية", use_container_width=True):
+    with st.spinner(f"جاري معالجة خرائط ونماذج {selected_city}..."):
         try:
             url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16"
             data = requests.get(url).json()["hourly"]
@@ -107,26 +99,17 @@ if st.button("توليد التدوينة الجوية"):
             max_t = max(temps)
             min_t = min(temps)
             avg_rh = sum(data["relative_humidity_700hPa"][:h]) / h
-            max_wind = max(data["wind_speed_10m"][:h]) # جلب سرعة الرياح للميزة الجديدة
+            max_wind = max(data["wind_speed_10m"][:h])
             
+            # عرض المؤشرات الأساسية في الأعلى بتصميم منظم
             c1, c2 = st.columns(2)
-            c1.metric(f"العظمى في {selected_city}", f"{max_t:.1f}°C")
-            c2.metric("إجمالي الأمطار المرتقب", f"{precip:.1f} ملم")
+            c1.metric(f"🌡️ العظمى المتوقعة ({selected_city})", f"{max_t:.1f}°C")
+            c2.metric("🌧️ إجمالي الأمطار المرتقب", f"{precip:.1f} ملم")
             
-            # --- ميزة مضافة 1: واجهة نصائح اليوم الذكية (if/else بناءً على البيانات الفعلية) ---
-            st.markdown("### 💡 إرشادات ونصائح اليوم الحصرية:")
-            if precip > 2:
-                st.warning("⚠️ **تنبيه الخريف والأمطار:** يُتوقع هطول أمطار معتبرة. يرجى من السائقين توخي الحذر من المستنقعات على محاور الطرق، وللمزارعين أخذ الاحتياطات اللازمة.")
-            elif max_wind > 25:
-                st.info("💨 **تنبيه نشاط الرياح:** الرياح السطحية نشطة وقد تثير الأتربة؛ يُنصح بحماية محركات السيارات وإغلاق النوافذ لمنع دخول الغبار العالق.")
-            elif max_t > 38:
-                st.error("☀️ **تنبيه موجة حر:** الأجواء شديدة الحرارة اليوم؛ يرجى تجنب التعرض المباشر لأشعة الشمس في أوقات الذروة والإكثار من شرب السوائل.")
-            else:
-                st.success("🌱 **أجواء مستقرة:** الطقس معتدل ومستقر بوجه عام ومناسب للأنشطة الخارجية المختلفة.")
+            st.write("")
             
-            st.write("---")
-            
-            st.markdown("### 📝 تدوينة الخبير الأرصادي:")
+            # 🔘 أولاً: تدوينة الخبير الأرصادي
+            st.markdown(f"### 📝 تدوينة الخبير الأرصادي لـ ({selected_city}):")
             
             if h == 24:
                 time_context = "خلال الأربع وعشرين ساعة القادمة"
@@ -151,7 +134,18 @@ if st.button("توليد التدوينة الجوية"):
             
             st.info(blog)
             
-            # --- ميزة مضافة 2: زر مشاركة حالة الطقس على واتساب لنشر التطبيق ورابط التحميل المثبت ---
+            # 🔘 ثانياً: الإرشادات والنصائح الذكية (تأتي مرتبة بعد التدوينة مباشرة)
+            st.markdown("### 💡 الإرشادات والنصائح اليومية:")
+            if precip > 2:
+                st.warning("⚠️ **تنبيه الخريف والأمطار:** يُتوقع هطول أمطار معتبرة. يرجى من السائقين توخي الحذر من المستنقعات على محاور الطرق، وللمزارعين أخذ الاحتياطات اللازمة.")
+            elif max_wind > 25:
+                st.info("💨 **تنبيه نشاط الرياح:** الرياح السطحية نشطة وقد تثير الأتربة؛ يُنصح بحماية محركات السيارات وإغلاق النوافذ لمنع دخول الغبار العالق.")
+            elif max_t > 38:
+                st.error("☀️ **تنبيه موجة حر:** الأجواء شديدة الحرارة اليوم؛ يرجى تجنب التعرض المباشر لأشعة الشمس في أوقات الذروة والإكثار من شرب السوائل.")
+            else:
+                st.success("🌱 **أجواء مستقرة:** الطقس معتدل ومستقر بوجه عام ومناسب للأنشطة الخارجية المختلفة.")
+            
+            # 🔘 ثالثاً: زر مشاركة الطقس في الأسفل تماماً
             st.write("---")
             share_text = f"🌤️ طقس {selected_city} اليوم:\n- الحرارة العظمى: {max_t:.1f}°C\n- الأمطار: {precip:.1f} ملم\n\n👇 لمتابعة رادار السحب والأمطار في موريتانيا، حمل تطبيقنا برابط مباشر APK من هنا:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
             encoded_text = urllib.parse.quote(share_text)
@@ -165,14 +159,15 @@ if st.button("توليد التدوينة الجوية"):
                             background-color: #25D366; 
                             color: white; 
                             border: none; 
-                            padding: 10px 20px; 
-                            font-size: 16px; 
+                            padding: 12px 24px; 
+                            font-size: 15px; 
                             font-weight: bold; 
                             border-radius: 8px; 
                             cursor: pointer;
                             box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+                            width: 100%;
                         ">
-                            🟢 شارك حالة الطقس ورابط التطبيق عبر WhatsApp
+                            🟢 إرسال ملخص الطقس ورابط التطبيق عبر WhatsApp
                         </button>
                     </a>
                 </div>
