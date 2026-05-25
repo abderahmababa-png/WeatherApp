@@ -4,7 +4,7 @@ import os
 import streamlit.components.v1 as components
 import urllib.parse
 
-# كود يمنع تداخل اللمس والسحب بين تطبيق الأندرويد والخريطة التفاعلية
+# كود يمنع تداخل اللمس والسحب وضبط الهوية البصرية الزرقاء المتناسقة مع الشعار
 st.markdown(
     """
     <style>
@@ -12,13 +12,13 @@ st.markdown(
         overscroll-behavior-y: contain !important;
         touch-action: pan-x pan-y !important;
     }
+    /* جعل أزرار التحكم متناسقة مع اللون الأزرق للشعار */
     .stButton>button {
-        background-color: #4CAF50 !important;
+        background-color: #1E88E5 !important;
         color: white !important;
         border-radius: 6px !important;
         border: none !important;
     }
-    /* تحسين استجابة حاوية المكونات الذكية */
     iframe {
         pointer-events: auto !important;
     }
@@ -29,13 +29,14 @@ st.markdown(
 
 st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
-# الشعار (دائري مع إطار أخضر)
+# الشعار (دائري مع إطار أزرق متناسق)
 LOGO_FILE = "1779505332712.jpg"
-st.markdown("<style>.stImage img {border-radius: 50%; border: 3px solid #4CAF50; max-width: 130px; margin: 0 auto; display: block;}</style>", unsafe_allow_html=True)
+st.markdown("<style>.stImage img {border-radius: 50%; border: 3px solid #1E88E5; max-width: 140px; margin: 0 auto; display: block;}</style>", unsafe_allow_html=True)
 if os.path.exists(LOGO_FILE): 
     st.image(LOGO_FILE)
 
-st.markdown("<h1 style='text-align: center; color: #4CAF50; font-family: Arial;'>طقس روصو Rosso weather</h1>", unsafe_allow_html=True)
+# عنوان منسق: حجم خط أصغر، على سطر واحد، ولون أزرق متناسق تماماً مع الشعار
+st.markdown("<h2 style='text-align: center; color: #1E88E5; font-family: Arial; font-size: 24px; direction: rtl; margin-top: 10px;'>طقس روصو | Rosso weather</h2>", unsafe_allow_html=True)
 st.write("---")
 
 # 1. قسم تحديد الموقع والمدى الزمني
@@ -67,13 +68,12 @@ col_btn, col_empty = st.columns([1, 2])
 with col_btn:
     show_radar = st.checkbox("🛰️ رادار الأمطار الحية", value=False)
 
-# عرض الرادار النظيف والمحمي من مشاكل التحريك العشوائي
+# عرض الرادار النظيف والمحمي من مشاكل التحريك العشوائي برابط أزرق متناسق
 if show_radar:
-    st.markdown(f"<p style='color:#4CAF50; font-weight:bold; margin-bottom:5px;'>🗺️ رادار الأمطار الحية (النموذج الأوروبي ECMWF) - نطاق {selected_city}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color:#1E88E5; font-weight:bold; margin-bottom:5px;'>🗺️ رادار الأمطار الحية (النموذج الأوروبي ECMWF) - نطاق {selected_city}</p>", unsafe_allow_html=True)
     
-    # كود معالج لمنع مشاكل اللمس والتكبير خارج نطاق الخريطة في الأندرويد
     custom_map_html = f"""
-    <div style="width: 100%; height: 380px; border-radius: 10px; overflow: hidden; border: 2px solid #4CAF50; position: relative; background-color: #1a1a1a; touch-action: auto;">
+    <div style="width: 100%; height: 380px; border-radius: 10px; overflow: hidden; border: 2px solid #1E88E5; position: relative; background-color: #1a1a1a; touch-action: auto;">
         <div style="width: 100%; height: 100%; top: -45px; position: absolute;">
             <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=8&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=true&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default" 
                     width="100%" 
@@ -82,7 +82,7 @@ if show_radar:
                     style="border:0; clip-path: inset(45px 0px 45px 0px); pointer-events: auto;">
             </iframe>
         </div>
-        <div style="position: absolute; top: 10px; right: 10px; background-color: rgba(26, 26, 26, 0.9); color: #4CAF50; padding: 6px 14px; font-family: Arial; font-size: 12px; font-weight: bold; border-radius: 5px; z-index: 9999; direction: rtl; border: 1px solid #4CAF50;">
+        <div style="position: absolute; top: 10px; right: 10px; background-color: rgba(26, 26, 26, 0.9); color: #1E88E5; padding: 6px 14px; font-family: Arial; font-size: 12px; font-weight: bold; border-radius: 5px; z-index: 9999; direction: rtl; border: 1px solid #1E88E5;">
             🛰️ التوقع الأوروبي الحـي
         </div>
     </div>
@@ -107,7 +107,7 @@ if st.button("📊 توليد وتحليل التدوينة الجوية", use_c
             avg_rh = sum(data["relative_humidity_700hPa"][:h]) / h
             max_wind = max(data["wind_speed_10m"][:h])
             
-            # عرض المؤشرات الأساسية في الأعلى بتصميم منظم
+            # عرض المؤشرات الأساسية
             c1, c2 = st.columns(2)
             c1.metric(f"🌡️ العظمى المتوقعة ({selected_city})", f"{max_t:.1f}°C")
             c2.metric("🌧️ إجمالي الأمطار المرتقب", f"{precip:.1f} ملم")
@@ -151,7 +151,7 @@ if st.button("📊 توليد وتحليل التدوينة الجوية", use_c
             else:
                 st.success("🌱 **أجواء مستقرة:** الطقس معتدل ومستقر بوجه عام ومناسب للأنشطة الخارجية المختلفة.")
             
-            # 🔘 ثالثاً: زر مشاركة الطقس في الأسفل تماماً
+            # 🔘 ثالثاً: زر مشاركة الطقس في الأسفل
             st.write("---")
             share_text = f"🌤️ طقس {selected_city} اليوم:\n- الحرارة العظمى: {max_t:.1f}°C\n- الأمطار: {precip:.1f} ملم\n\n👇 لمتابعة رادار السحب والأمطار في موريتانيا، حمل تطبيقنا برابط مباشر APK من هنا:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
             encoded_text = urllib.parse.quote(share_text)
