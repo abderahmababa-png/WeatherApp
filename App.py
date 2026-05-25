@@ -95,32 +95,43 @@ st.write("---")
 if st.button("📊 توليد وتحليل التدوينة الجوية", use_container_width=True):
     with st.spinner(f"جاري معالجة خرائط ونماذج {selected_city}..."):
         try:
-            # استخدام الرابط المخصص للمدى الطويل وعمل فحص للاستجابة
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16"
-            
-            # إذا طلب المستخدم 10 أو 16 يوماً، يتم تحويل الطلب تلقائياً إلى خادم المدى الطويل لتجنب خطأ الـ API
             h = period_map[period]
+            # اختيار الخادم المناسب بناءً على المدة الزمنية المطلوبة
             if h > 120:
                 url = f"https://api.open-meteo.com/v1/gfs?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16"
+            else:
+                url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=7"
                 
             response = requests.get(url)
             
             if response.status_code == 200:
                 data = response.json()["hourly"]
                 
-                # فحص الحجم الفعلي للمصفوفات لتفادي قراءة مؤشر غير موجود
-                available_hours = len(data["temperature_2m"])
-                actual_h = min(h, available_hours)
+                # تحديد عدد الساعات المتاحة فعلياً لتجنب خطأ أبعاد المصفوفة
+                actual_h = min(h, len(data["temperature_2m"]))
                 
-                temps = data["temperature_2m"][:actual_h]
-                precip = sum([x for x in data["precipitation"][:actual_h] if x])
-                prob = max(data["precipitation_probability"][:actual_h]) if "precipitation_probability" in data and data["precipitation_probability"] else 0
-                max_t = max(temps)
-                min_t = min(temps)
+                # معالجة وتنظيف البيانات من أي قيم فارغة (NoneType) لقطع دابر الخطأ تماماً
+                raw_temps = data.get("temperature_2m", [])[:actual_h]
+                temps = [float(x) if x is not None else 0.0 for x in raw_temps]
                 
-                # التعامل مع الرطوبة والرياح بشكل آمن في حال عدم توفرها في بعض النماذج الطويلة
-                avg_rh = sum(data["relative_humidity_700hPa"][:actual_h]) / actual_h if "relative_humidity_700hPa" in data and data["relative_humidity_700hPa"] else 0
-                max_wind = max(data["wind_speed_10m"][:actual_h]) if "wind_speed_10m" in data and data["wind_speed_10m"] else 0
+                raw_precip = data.get("precipitation", [])[:actual_h]
+                precip_list = [float(x) if x is not None else 0.0 for x in raw_precip]
+                precip = sum(precip_list)
+                
+                raw_prob = data.get("precipitation_probability", [])[:actual_h]
+                prob_list = [int(x) if x is not None else 0 for x in raw_prob]
+                prob = max(prob_list) if prob_list else 0
+                
+                raw_rh = data.get("relative_humidity_700hPa", [])[:actual_h]
+                rh_list = [float(x) if x is not None else 0.0 for x in raw_rh]
+                avg_rh = sum(rh_list) / len(rh_list) if rh_list else 0
+                
+                raw_wind = data.get("wind_speed_10m", [])[:actual_h]
+                wind_list = [float(x) if x is not None else 0.0 for x in raw_wind]
+                max_wind = max(wind_list) if wind_list else 0
+                
+                max_t = max(temps) if temps else 0.0
+                min_t = min(temps) if temps else 0.0
                 
                 # عرض المؤشرات الأساسية
                 c1, c2 = st.columns(2)
