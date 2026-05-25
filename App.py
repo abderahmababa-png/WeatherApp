@@ -1,141 +1,273 @@
 import streamlit as st
 import requests
-import pandas as pd
-from datetime import datetime
+import os
+import streamlit.components.v1 as components
+import urllib.parse
 
-# 1. إعدادات الصفحة العامة واختيار المظهر الواسع
-st.set_page_config(
-    page_title="منصة طقس روصو والترارزة",
-    page_icon="⛈️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+# كود يمنع تداخل اللمس والسحب وضبط الهوية البصرية الزرقاء المتناسقة مع الشعار
+st.markdown(
+    """
+    <style>
+    html, body, [data-testid="stAppViewContainer"] {
+        overscroll-behavior-y: contain !important;
+        touch-action: pan-x pan-y !important;
+    }
+    /* جعل أزرار التحكم متناسقة مع اللون الأزرق للشعار */
+    .stButton>button {
+        background-color: #1E88E5 !important;
+        color: white !important;
+        border-radius: 6px !important;
+        border: none !important;
+    }
+    iframe {
+        pointer-events: auto !important;
+    }
+    /* تنسيق خاص بصندوق مواقيت الصلاة الصغير */
+    .prayer-box {
+        background-color: #f9f9f9;
+        border: 1px solid #1E88E5;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        direction: rtl;
+        margin-top: 15px;
+    }
+    .prayer-item {
+        display: inline-block;
+        margin: 0 8px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+    .prayer-time {
+        color: #1E88E5;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
-# تحسين مظهر الجدول والقوائم عبر CSS مخصص لتناسب الواجهة العربية
-st.markdown("""
-    <style>
-    .reportview-container .main .block-container { direction: rtl; }
-    .sidebar .sidebar-content { direction: rtl; }
-    th, td { text-align: right !important; }
-    </style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
+# الشعار (دائري مع إطار أزرق متناسق)
+LOGO_FILE = "1779505332712.jpg"
+st.markdown("<style>.stImage img {border-radius: 50%; border: 3px solid #1E88E5; max-width: 140px; margin: 0 auto; display: block;}</style>", unsafe_allow_html=True)
+if os.path.exists(LOGO_FILE): 
+    st.image(LOGO_FILE)
 
-# 2. إعداد بيانات المدن والمقاطعات في ولاية الترارزة
-CITIES = {
-    "روصو (العاصمة)": {"lat": 16.5165, "lon": -15.8050},
-    "المذرذرة": {"lat": 16.9200, "lon": -15.7900},
-    "اركيز": {"lat": 16.9150, "lon": -15.2830},
-    "بوتلميت": {"lat": 17.5480, "lon": -14.7350},
-    "كرمسين": {"lat": 16.4950, "lon": -16.2550},
-    "تكنت": {"lat": 17.1600, "lon": -16.0100}
+# عنوان منسق ومناسب تماماً على سطر واحد
+st.markdown("<h2 style='text-align: center; color: #1E88E5; font-family: Arial; font-size: 24px; direction: rtl; margin-top: 10px;'>طقس روصو | Rosso weather</h2>", unsafe_allow_html=True)
+st.write("---")
+
+# 1. قسم تحديد الموقع والمدى الزمني
+st.markdown("### 📍 الإعدادات الجغرافية والزمنية")
+locations_map = {
+    "روصو": {"lat": 16.51, "lon": -15.81},
+    "اركيز": {"lat": 16.91, "lon": -15.28},
+    "المذرذرة": {"lat": 16.92, "lon": -15.80},
+    "بوتلميت": {"lat": 17.54, "lon": -14.77},
+    "واد الناقة": {"lat": 17.98, "lon": -15.49},
+    "كرمسين": {"lat": 16.49, "lon": -16.20},
+    "تكنت": {"lat": 17.24, "lon": -16.14},
+    "انجاكو": {"lat": 16.29, "lon": -16.45}
 }
 
+col_city, col_time = st.columns(2)
+with col_city:
+    selected_city = st.selectbox("اختر المقاطعة:", list(locations_map.keys()))
+with col_time:
+    period_map = {"24 ساعة": 24, "5 أيام": 120, "10 أيام": 240, "16 يوماً": 384}
+    period = st.selectbox("المدى الزمني للتحليل:", list(period_map.keys()))
 
-# --- 3. الشريط الجانبي (Sidebar) ---
-with st.sidebar:
-    st.markdown("<h2 style='text-align: center; color: #1E3A8A;'>🕋 مواقيت الصلاة</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: gray;'>التوقيت المحلي لمدينة روصو وضواحيها</p>", unsafe_allow_html=True)
-    st.write("---")
-    
-    # عرض المواقيت في جدول مدمج وبسيط لا يأخذ مساحة عمودية كبيرة
-    prayer_data = {
-        "الصلاة": ["الفجر", "الظهر", "العصر", "المغرب", "العشاء"],
-        "الوقت": ["05:05", "13:00", "16:15", "19:30", "20:45"]
-    }
-    df_prayer = pd.DataFrame(prayer_data)
-    st.table(df_prayer.set_index("الصلاة"))
-    
-    st.write("---")
-    
-    # إضافة خيار اختيار المدينة داخل الشريط الجانبي أيضاً لتنظيف الواجهة الرئيسية
-    st.markdown("### 📍 تحديد الموقع")
-    selected_city = st.selectbox("اختر المقاطعة أو المركز المُراد رصده:", list(CITIES.keys()))
-    
-    st.write("---")
-    st.caption(f"آخر تحديث للواجهة: {datetime.now().strftime('%H:%M')}")
+lat = locations_map[selected_city]["lat"]
+lon = locations_map[selected_city]["lon"]
 
+# التحكم في الخريطة بشكل جانبي وصغير
+st.write("")
+col_btn, col_empty = st.columns([1, 2])
+with col_btn:
+    show_radar = st.checkbox("🛰️ رادار الأمطار الحية", value=False)
 
-# --- 4. القسم الرئيسي للتطبيق (Main Page) ---
-st.title("🌤️ منصة طقس روصو الرقمية (Rosso Weather)")
-st.markdown(f"متابعة حية ومباشرة للحالة الجوية الحالية وتوقعات الأمطار في **{selected_city}** بناءً على الأرصاد الفعلية ونماذج الطقس العالمية.")
+# عرض الرادار النظيف والمحمي من مشاكل التحريك العشوائي برابط أزرق متناسق
+if show_radar:
+    st.markdown(f"<p style='color:#1E88E5; font-weight:bold; margin-bottom:5px;'>🗺️ رادار الأمطار الحية (النموذج الأوروبي ECMWF) - نطاق {selected_city}</p>", unsafe_allow_html=True)
+    
+    custom_map_html = f"""
+    <div style="width: 100%; height: 380px; border-radius: 10px; overflow: hidden; border: 2px solid #1E88E5; position: relative; background-color: #1a1a1a; touch-action: auto;">
+        <div style="width: 100%; height: 100%; top: -45px; position: absolute;">
+            <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=8&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=true&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default" 
+                    width="100%" 
+                    height="470px" 
+                    frameborder="0" 
+                    style="border:0; clip-path: inset(45px 0px 45px 0px); pointer-events: auto;">
+            </iframe>
+        </div>
+        <div style="position: absolute; top: 10px; right: 10px; background-color: rgba(26, 26, 26, 0.9); color: #1E88E5; padding: 6px 14px; font-family: Arial; font-size: 12px; font-weight: bold; border-radius: 5px; z-index: 9999; direction: rtl; border: 1px solid #1E88E5;">
+            🛰️ التوقع الأوروبي الحـي
+        </div>
+    </div>
+    """
+    components.html(custom_map_html, height=390)
+
 st.write("---")
 
-# جلب الإحداثيات بناءً على اختيار المستخدم
-lat = CITIES[selected_city]["lat"]
-lon = CITIES[selected_city]["lon"]
+# 2. زر معالجة البيانات وتوليد النتائج والمرئيات
+if st.button("📊 توليد وتحليل التدوينة الجوية", use_container_width=True):
+    with st.spinner(f"جاري معالجة خرائط ونماذج {selected_city}..."):
+        try:
+            h = period_map[period]
+            
+            # جلب بيانات الطقس والرياح السطحية (تم تعويض مؤشر جودة الهواء العشوائي برصد الرياح الواقعي الحقيقي)
+            if h > 120:
+                weather_url = f"https://api.open-meteo.com/v1/gfs?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&forecast_days=16"
+            else:
+                weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m&forecast_days=7"
+                
+            # جلب مواقيت الصلاة من السيرفر الرسمي المتوافق مع توقيت الساحل وموريتانيا
+            prayer_url = f"https://api.aladhan.com/v1/timings?latitude={lat}&longitude={lon}&method=3"
+            
+            weather_res = requests.get(weather_url)
+            prayer_res = requests.get(prayer_url)
+            
+            if weather_res.status_code == 200:
+                data = weather_res.json()["hourly"]
+                actual_h = min(h, len(data["temperature_2m"]))
+                
+                # تنظيف ومعالجة البيانات
+                temps = [float(x) if x is not None else 0.0 for x in data.get("temperature_2m", [])[:actual_h]]
+                precip_list = [float(x) if x is not None else 0.0 for x in data.get("precipitation", [])[:actual_h]]
+                precip = sum(precip_list)
+                prob = max([int(x) if x is not None else 0 for x in data.get("precipitation_probability", [])[:actual_h]]) if data.get("precipitation_probability") else 0
+                
+                # سرعة الرياح الحقيقية بوحدة كم/ساعة لتحليل واقع الغبار الميداني
+                wind_speeds = [float(x) if x is not None else 0.0 for x in data.get("wind_speed_10m", [])[:actual_h]]
+                max_wind = max(wind_speeds) if wind_speeds else 0.0
+                
+                max_t = max(temps) if temps else 0.0
+                min_t = min(temps) if temps else 0.0
+                
+                # حساب الرطوبة المتوسطة
+                raw_rh = data.get("relative_humidity_700hPa", [])[:actual_h] if "relative_humidity_700hPa" in data else []
+                avg_rh = (sum([float(x) for x in raw_rh if x is not None]) / len(raw_rh)) if raw_rh else (55.0 if precip > 0 else 35.0)
 
+                # استخلاص مواقيت الصلاة
+                timings = {}
+                if prayer_res.status_code == 200:
+                    timings = prayer_res.json().get("data", {}).get("timings", {})
 
-# 5. دالة جلب بيانات الطقس الحقيقية من Open-Meteo API
-@st.cache_data(ttl=600)  # تحديث التخزين المؤقت كل 10 دقائق
-def fetch_weather_data(latitude, longitude):
-    # نطلب بيانات الطقس الحالي + توقعات المطر والرطوبة لكل ساعة لـ 24 ساعة القادمة
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true&hourly=temperature_2m,rain,precipitation_probability,relative_humidity_2m&timezone=Africa/Nouakchott"
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            return response.json()
-        return None
-    except:
-        return None
+                # عرض المؤشرات الأساسية بوضوح وصدق
+                c1, c2, c3 = st.columns(3)
+                c1.metric(f"🌡️ العظمى ({selected_city})", f"{max_t:.1f}°C")
+                c2.metric("🌧️ إجمالي الأمطار", f"{precip:.1f} ملم")
+                c3.metric("💨 ذروة الرياح السطحية", f"{max_wind:.1f} كم/س")
+                
+                st.write("")
+                
+                # 🔘 أولاً: تدوينة الخبير الأرصادي الواقعية
+                st.markdown(f"### 📝 تدوينة الخبير الأرصادي لـ ({selected_city}):")
+                
+                if h == 24:
+                    time_context = "خلال الأربع وعشرين ساعة القادمة"
+                    trend_context = f"تستقر قراءات الحرارة اللحظية لتسجل عظمى تلامس {max_t:.1f}°C مع أجواء تميل للاعتدال النسبي خلال ساعات الفجر عند {min_t:.1f}°C."
+                else:
+                    time_context = f"خلال الفترة الممتدة للمدى المتوسط والبعيد ({period})"
+                    trend_context = f"تشير حركة المحاكاة لتذبذب حراري مستمر، حيث تبلغ ذروة الاحترار {max_t:.1f}°C، بينما تنخفض الصغرى في فترات التبريد الإشعاعي الليلي لتلامس {min_t:.1f}°C."
 
-weather_json = fetch_weather_data(lat, lon)
+                if avg_rh > 45:
+                    moisture_influence = "مع رصد تدفقات ممتازة للرطوبة الجوية في الطبقات البنائية المتوسطة ممهدة لتكاثف حملي محلي."
+                else:
+                    moisture_influence = "برغم سيطرة كتل هوائية جافة نسبياً في طبقات الجو المتوسطة تحد من الامتداد الشاقولي للسحب السريعة."
 
-if weather_json:
-    # أ. استخراج بيانات الطقس الحالي
-    current = weather_json["current_weather"]
-    
-    # تحويل كود الطقس الرقمي إلى وصف نصي واقعي ومباشر
-    weather_codes = {
-        0: "سماء صافية مستقرة", 1: "صافي غالباً", 2: "غائم جزئياً", 3: "غائم بالكامل",
-        51: "رذاذ خفيف", 53: "رذاذ معتدل", 61: "أمطار خفيفة", 63: "أمطار معتدلة", 
-        65: "أمطار غزيرة", 80: "زخات مطر خفيفة", 81: "زخات مطر قوية"
-    }
-    status_desc = weather_codes.get(current["weathercode"], "مستقر")
+                # دمج تحليل الرياح الحقيقي لحالة الغبار الواقعي والأتربة المثارة
+                dust_context = ""
+                if max_wind > 24:
+                    dust_context = " مع رصد نشاط ملحوظ في سرعة الرياح السطحية الجافة، مما يرفع من احتمالية إثارة الأتربة المحلية العالقة في المناطق المفتوحة والمكشوفة."
 
-    # ب. عرض المؤشرات الحالية في أعمدة جذابة ومباشرة
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric(label="🌡️ درجة الحرارة الحالية", value=f"{current['temperature']} °C")
-    with col2:
-        st.metric(label="📊 الحالة الرصدية الفعلية", value=status_desc)
-    with col3:
-        st.metric(label="💨 سرعة الرياح", value=f"{current['windspeed']} كم/س")
-    with col4:
-        # جلب الرطوبة الحالية من أول قراءة متاح في التوقعات الساعية
-        current_humidity = weather_json["hourly"]["relative_humidity_2m"][0]
-        st.metric(label="💧 نسبة الرطوبة", value=f"{current_humidity}%")
+                if precip > 0:
+                    blog = f"""توضح تحديثات النماذج العددية لنطاق **{selected_city}** {time_context} مؤشرات على اضطرابات جوية محتملة{dust_context}. {trend_context}
+                    
+{moisture_influence} وبناءً عليه، تضع النماذج فرصة هطول مطري تصل ذروة احتماليتها إلى **{prob}%**، بتراكم إجمالي مرتقب يبلغ **{precip:.1f} ملم**، مما يعزز من فرص نشوء سحب ركامية رعدية على فترات."""
+                else:
+                    blog = f"""تُشير التنبؤات الجوية لنطاق **{selected_city}** {time_context} إلى سيطرة أجواء مستقرة بوجه عام{dust_context}. {trend_context}
+                    
+{moisture_influence} وبالتالي تبقى فرص الهطول الفعلي منعدمة عند **0.0 ملم** مع تراجع احتمالية الأمطار لـ **{prob}%**."""
+                
+                st.info(blog)
+                
+                # 🔘 ثانياً: الإرشادات والنصائح الإنسانية الوقائية الحقيقية
+                st.markdown("### 💡 الإرشادات والنصائح الوقائية العامة:")
+                if precip > 2:
+                    st.warning("⚠️ **تنبيه السلامة من الأمطار:** يُتوقع هطول أمطار معتبرة؛ يرجى الابتعاد تماماً عن مجاري السيول وتجمعات المياه الراكدة، وتجنب ملامسة أعمدة الكهرباء أو الأسلاك المكشوفة أثناء وبعد المطر حفاظاً على سلامتكم.")
+                elif max_wind > 24:
+                    st.info("💨 **تنبيه رياح وأتربة:** تنشط الرياح بشكل قد يثير بعض الغبار الخفيف العالق؛ ينصح لمرضى الجهاز التنفسي والعيون بالحذر عند الخروج في الأوقات التي تشتد فيها الهبات السطحية.")
+                elif max_t > 38:
+                    st.error("☀️ **وقاية من الإجهاد الحراري:** الطقس شديد الحرارة؛ يُنصح بعدم التعرض المباشر لأشعة الشمس في أوقات الذروة، والحرص على شرب كميات كافية من المياه طوال اليوم لتفادي ضربات الشمس.")
+                else:
+                    st.success("🌱 **أجواء مستقرة:** الطقس معتدل ومناسب جداً للأنشطة الخارجية؛ ننصحك باستغلال هذه الأجواء الطيبة مع الحفاظ على شرب السوائل بانتظام لتنشيط الجسم.")
 
-    st.write("---")
+                # 🕌 ثالثاً: خانة مواقيت الصلاة (تصميم مصغر ومدمج ومربوط بالطقس)
+                if timings:
+                    st.write("---")
+                    current_precipitation_now = data.get("precipitation", [0])[0]
+                    
+                    # صياغة شريط التنبيه المرتبط بالصلوات
+                    prayer_alert = ""
+                    if precip > 0 and prob > 60:
+                        prayer_alert = f"<p style='color:#1E88E5; font-size:13px; margin-top:5px; font-weight:bold;'>📢 تنبيه: توقعات المطر الحالية ({prob}%) تتطلب الانتباه لسلامة المصلين وتجنب الأماكن الزلقة عند التوجه للمساجد.</p>"
+                    elif current_precipitation_now > 0.5:
+                        prayer_alert = "<p style='color:#d32f2f; font-size:13px; margin-top:5px; font-weight:bold;'>🌧️ تنبيه عاجل: هطول مطري الآن؛ يرجى أخذ الحيطة والحذر الشديد أثناء الذهاب لأداء الصلاة.</p>"
+                    elif max_wind > 26:
+                        prayer_alert = "<p style='color:#f57c00; font-size:13px; margin-top:5px; font-weight:bold;'>💨 تنبيه: الرياح نشطة ومثيرة للأتربة؛ ينصح بوضع لثام أو كمامة واقية عند الذهاب للمسجد لمرضى الصدر والربو.</p>"
+                    else:
+                        prayer_alert = "<p style='color:#388e3c; font-size:13px; margin-top:5px; font-weight:bold;'>🌤️ الأجواء مستقرة تماماً ومناسبة للذهاب إلى المساجد بأمان.</p>"
 
-    # ج. قسم توقعات الأمطار للساعات القادمة (مهم جداً لمراقبة الخريف)
-    st.subheader("⛈️ جدول رصد توقعات الأمطار (خلال الساعات القادمة)")
-    
-    hourly_data = weather_json["hourly"]
-    # تحويل البيانات إلى dataframe وعرض الساعات الـ 6 القادمة فقط للاختصار والدقة
-    df_hourly = pd.DataFrame({
-        "الوقت": [t.split("T")[1] for t in hourly_data["time"][:6]],
-        "درجة الحرارة (°C)": hourly_data["temperature_2m"][:6],
-        "احتمالية المطر (%)": hourly_data["precipitation_probability"][:6],
-        "كمية المطر المتوقعة (ملم)": hourly_data["rain"][:6]
-    })
-    
-    st.dataframe(df_hourly.set_index("الوقت"), use_container_width=True)
-    
-    st.write("---")
-
-    # د. قسم خريطة الرادار التفاعلية المباشرة (Windy)
-    st.subheader("🗺️ الرادار المباشر وحركة السحب والأمطار")
-    st.markdown("الرادار مضبوط تلقائياً على نموذج **ECMWF** الأوروبي لمتابعة الجبهات الماطرة وجبهات السحب الحية فوق المنطقة جنوب موريتانيا.")
-    
-    # تضمين خريطة Windy التفاعلية مع تمرير إحداثيات المدينة المختارة ديناميكياً
-    windy_iframe_url = f"https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&detailLat={lat}&detailLon={lon}&width=1000&height=500&zoom=8&level=surface&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1"
-    
-    st.components.v1.iframe(windy_iframe_url, height=500, scrolling=False)
-
-else:
-    st.error("عذراً، فشل التطبيق في الاتصال بـ API الأرصاد الجوية. يرجى التحقق من اتصال الإنترنت أو المحاولة لاحقاً.")
-
-# تذييل الصفحة وثبات الهوية الموثوقة للتطبيق
-st.write("---")
-st.markdown("<p style='text-align: center; color: gray;'>تطبيق Rosso Weather - بيانات مرصودة حقيقية خالية من التخمين</p>", unsafe_allow_html=True)
+                    # عرض مواقيت الصلاة في شريط سطر واحد صغير وموفر للمساحة
+                    st.markdown(
+                        f"""
+                        <div class="prayer-box">
+                            <strong style="color: #333;">🕌 مواقيت الصلاة اليوم في {selected_city}:</strong>
+                            <hr style="margin: 5px 0; border: 0; border-top: 1px solid #ddd;">
+                            <div class="prayer-item">الفجر: <span class="prayer-time">{timings['Fajr']}</span></div> |
+                            <div class="prayer-item">الظهر: <span class="prayer-time">{timings['Dhuhr']}</span></div> |
+                            <div class="prayer-item">العصر: <span class="prayer-time">{timings['Asr']}</span></div> |
+                            <div class="prayer-item">المغرب: <span class="prayer-time">{timings['Maghrib']}</span></div> |
+                            <div class="prayer-item">العشاء: <span class="prayer-time">{timings['Isha']}</span></div>
+                            {prayer_alert}
+                        </div>
+                        """, 
+                        unsafe_allow_html=True
+                    )
+                
+                # 🔘 رابعاً: زر مشاركة الطقس في الأسفل
+                st.write("---")
+                share_text = f"🌤️ طقس {selected_city} اليوم:\n- الحرارة العظمى: {max_t:.1f}°C\n- الأمطار: {precip:.1f} ملم\n- الرياح: {max_wind:.1f} كم/س\n\n👇 لمتابعة رادار السحب ومواقيت الصلاة في الترارزة، حمل تطبيقنا برابط مباشر APK من هنا:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
+                encoded_text = urllib.parse.quote(share_text)
+                whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_text}"
+                
+                st.markdown(
+                    f"""
+                    <div style="text-align: center;">
+                        <a href="{whatsapp_url}" target="_blank" style="text-decoration: none;">
+                            <button style="
+                                background-color: #25D366; 
+                                color: white; 
+                                border: none; 
+                                padding: 12px 24px; 
+                                font-size: 15px; 
+                                font-weight: bold; 
+                                border-radius: 8px; 
+                                cursor: pointer;
+                                box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+                                width: 100%;
+                            ">
+                                🟢 إرسال ملخص الطقس والمواقيت ورابط التطبيق عبر WhatsApp
+                            </button>
+                        </a>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
+            else:
+                st.error(f"استجابة غير صالحة من خادم النماذج الجوية (رمز الخطأ: {weather_res.status_code})")
+            
+        except Exception as e:
+            st.error(f"حدث خطأ أثناء معالجة البيانات: {str(e)}")
