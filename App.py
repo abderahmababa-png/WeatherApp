@@ -35,7 +35,7 @@ st.markdown("<style>.stImage img {border-radius: 50%; border: 3px solid #1E88E5;
 if os.path.exists(LOGO_FILE): 
     st.image(LOGO_FILE)
 
-# عنوان منسق: حجم خط أصغر، على سطر واحد، ولون أزرق متناسق تماماً مع الشعار
+# عنوان منسق ومناسب تماماً على سطر واحد
 st.markdown("<h2 style='text-align: center; color: #1E88E5; font-family: Arial; font-size: 24px; direction: rtl; margin-top: 10px;'>طقس روصو | Rosso weather</h2>", unsafe_allow_html=True)
 st.write("---")
 
@@ -95,8 +95,11 @@ st.write("---")
 if st.button("📊 توليد وتحليل التدوينة الجوية", use_container_width=True):
     with st.spinner(f"جاري معالجة خرائط ونماذج {selected_city}..."):
         try:
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16"
-            data = requests.get(url).json()["hourly"]
+            # تم تحديث الرابط لدعم جلب توقعات المدى الطويل حتى 16 يوماً بشكل كامل ومنظم
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16&models=ecmwf_ifs025"
+            
+            response = requests.get(url).json()
+            data = response["hourly"]
             h = period_map[period]
             
             temps = data["temperature_2m"][:h]
