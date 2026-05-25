@@ -95,94 +95,102 @@ st.write("---")
 if st.button("📊 توليد وتحليل التدوينة الجوية", use_container_width=True):
     with st.spinner(f"جاري معالجة خرائط ونماذج {selected_city}..."):
         try:
-            # تم تحديث الرابط لدعم جلب توقعات المدى الطويل حتى 16 يوماً بشكل كامل ومنظم
-            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16&models=ecmwf_ifs025"
+            # تم تعديل الرابط ليعمل بشكل تلقائي ومستقر للمدى الطويل (16 يوماً) لجميع المواقع دون مشاكل توافقية
+            url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m,wind_direction_10m&forecast_days=16"
             
             response = requests.get(url).json()
-            data = response["hourly"]
-            h = period_map[period]
             
-            temps = data["temperature_2m"][:h]
-            precip = sum([x for x in data["precipitation"][:h] if x])
-            prob = max(data["precipitation_probability"][:h])
-            max_t = max(temps)
-            min_t = min(temps)
-            avg_rh = sum(data["relative_humidity_700hPa"][:h]) / h
-            max_wind = max(data["wind_speed_10m"][:h])
-            
-            # عرض المؤشرات الأساسية
-            c1, c2 = st.columns(2)
-            c1.metric(f"🌡️ العظمى المتوقعة ({selected_city})", f"{max_t:.1f}°C")
-            c2.metric("🌧️ إجمالي الأمطار المرتقب", f"{precip:.1f} ملم")
-            
-            st.write("")
-            
-            # 🔘 أولاً: تدوينة الخبير الأرصادي
-            st.markdown(f"### 📝 تدوينة الخبير الأرصادي لـ ({selected_city}):")
-            
-            if h == 24:
-                time_context = "خلال الأربع وعشرين ساعة القادمة"
-                trend_context = f"تستقر قراءات الحرارة اللحظية لتسجل عظمى تلامس {max_t:.1f}°C مع أجواء تميل للاعتدال النسبي خلال ساعات الفجر عند {min_t:.1f}°C."
-            else:
-                time_context = f"خلال الفترة الممتدة للمدى المتوسط ({period})"
-                trend_context = f"تشير حركة المحاكاة لتذبذب حراري مستمر، حيث تبلغ ذروة الاحترار {max_t:.1f}°C، بينما تنخفض الصغرى في فترات التبريد الإشعاعي الليلي لتلامس {min_t:.1f}°C."
-
-            if avg_rh > 45:
-                moisture_influence = "مع رصد تدفقات ممتازة للرطوبة البنائية الجوية في الطبقات البنائية (700hPa) ممهدة لتكاثف حملي محلي."
-            else:
-                moisture_influence = "برغم سيطرة كتل هوائية جافة نسبياً في طبقات الجو المتوسطة تحد من الامتداد الشاقولي للسحب."
-
-            if precip > 0:
-                blog = f"""توضح تحديثات النماذج العددية لنطاق **{selected_city}** {time_context} مؤشرات على اضطرابات جوية محتملة. {trend_context}
+            if "hourly" in response:
+                data = response["hourly"]
+                h = period_map[period]
                 
+                # فحص للتأكد من أن البيانات المستلمة تغطي الساعات المطلوبة لمنع خطأ الـ Index
+                available_hours = len(data["temperature_2m"])
+                actual_h = min(h, available_hours)
+                
+                temps = data["temperature_2m"][:actual_h]
+                precip = sum([x for x in data["precipitation"][:actual_h] if x])
+                prob = max(data["precipitation_probability"][:actual_h]) if data["precipitation_probability"] else 0
+                max_t = max(temps)
+                min_t = min(temps)
+                avg_rh = sum(data["relative_humidity_700hPa"][:actual_h]) / actual_h if data["relative_humidity_700hPa"] else 0
+                max_wind = max(data["wind_speed_10m"][:actual_h]) if data["wind_speed_10m"] else 0
+                
+                # عرض المؤشرات الأساسية
+                c1, c2 = st.columns(2)
+                c1.metric(f"🌡️ العظمى المتوقعة ({selected_city})", f"{max_t:.1f}°C")
+                c2.metric("🌧️ إجمالي الأمطار المرتقب", f"{precip:.1f} ملم")
+                
+                st.write("")
+                
+                # 🔘 أولاً: تدوينة الخبير الأرصادي
+                st.markdown(f"### 📝 تدوينة الخبير الأرصادي لـ ({selected_city}):")
+                
+                if h == 24:
+                    time_context = "خلال الأربع وعشرين ساعة القادمة"
+                    trend_context = f"تستقر قراءات الحرارة اللحظية لتسجل عظمى تلامس {max_t:.1f}°C مع أجواء تميل للاعتدال النسبي خلال ساعات الفجر عند {min_t:.1f}°C."
+                else:
+                    time_context = f"خلال الفترة الممتدة للمدى المتوسط والبعيد ({period})"
+                    trend_context = f"تشير حركة المحاكاة لتذبذب حراري مستمر، حيث تبلغ ذروة الاحترار {max_t:.1f}°C، بينما تنخفض الصغرى في فترات التبريد الإشعاعي الليلي لتلامس {min_t:.1f}°C."
+
+                if avg_rh > 45:
+                    moisture_influence = "مع رصد تدفقات ممتازة للرطوبة الجوية في الطبقات البنائية المتوسطة (700hPa) ممهدة لتكاثف حملي محلي."
+                else:
+                    moisture_influence = "برغم سيطرة كتل هوائية جافة نسبياً في طبقات الجو المتوسطة تحد من الامتداد الشاقولي للسحب السريعة."
+
+                if precip > 0:
+                    blog = f"""توضح تحديثات النماذج العددية لنطاق **{selected_city}** {time_context} مؤشرات على اضطرابات جوية محتملة. {trend_context}
+                    
 {moisture_influence} وبناءً عليه، تضع النماذج فرصة هطول مطري تصل ذروة احتماليتها إلى **{prob}%**، بتراكم إجمالي مرتقب يبلغ **{precip:.1f} ملم**، مما يعزز من فرص نشوء سحب ركامية رعدية على فترات."""
-            else:
-                blog = f"""تُشير التنبؤات الجوية لنطاق **{selected_city}** {time_context} إلى سيطرة أجواء مستقرة بوجه عام. {trend_context}
-                
+                else:
+                    blog = f"""تُشير التنبؤات الجوية لنطاق **{selected_city}** {time_context} إلى سيطرة أجواء مستقرة بوجه عام. {trend_context}
+                    
 {moisture_influence} وبالتالي تبقى فرص الهطول الفعلي منعدمة عند **0.0 ملم** مع تراجع احتمالية الأمطار لـ **{prob}%**، مع نشاط معتدل للرياح السطحية قد يثير بعض الأتربة العالقة في المناطق المكشوفة."""
-            
-            st.info(blog)
-            
-            # 🔘 ثانياً: الإرشادات والنصائح الذكية
-            st.markdown("### 💡 الإرشادات والنصائح اليومية:")
-            if precip > 2:
-                st.warning("⚠️ **تنبيه الخريف والأمطار:** يُتوقع هطول أمطار معتبرة. يرجى من السائقين توخي الحذر من المستنقعات على محاور الطرق، وللمزارعين أخذ الاحتياطات اللازمة.")
-            elif max_wind > 25:
-                st.info("💨 **تنبيه نشاط الرياح:** الرياح السطحية نشطة وقد تثير الأتربة؛ يُنصح بحماية محركات السيارات وإغلاق النوافذ لمنع دخول الغبار العالق.")
-            elif max_t > 38:
-                st.error("☀️ **تنبيه موجة حر:** الأجواء شديدة الحرارة اليوم؛ يرجى تجنب التعرض المباشر لأشعة الشمس في أوقات الذروة والإكثار من شرب السوائل.")
+                
+                st.info(blog)
+                
+                # 🔘 ثانياً: الإرشادات والنصائح الذكية
+                st.markdown("### 💡 الإرشادات والنصائح اليومية:")
+                if precip > 2:
+                    st.warning("⚠️ **تنبيه الخريف والأمطار:** يُتوقع هطول أمطار معتبرة. يرجى من السائقين توخي الحذر من المستنقعات على محاور الطرق، وللمزارعين أخذ الاحتياطات اللازمة.")
+                elif max_wind > 25:
+                    st.info("💨 **تنبيه نشاط الرياح:** الرياح السطحية نشطة وقد تثير الأتربة؛ يُنصح بحماية محركات السيارات وإغلاق النوافذ لمنع دخول الغبار العالق.")
+                elif max_t > 38:
+                    st.error("☀️ **تنبيه موجة حر:** الأجواء شديدة الحرارة؛ يرجى تجنب التعرض المباشر لأشعة الشمس في أوقات الذروة والإكثار من شرب السوائل.")
+                else:
+                    st.success("🌱 **أجواء مستقرة:** الطقس معتدل ومستقر بوجه عام ومناسب للأنشطة الخارجية المختلفة.")
+                
+                # 🔘 ثالثاً: زر مشاركة الطقس في الأسفل
+                st.write("---")
+                share_text = f"🌤️ طقس {selected_city} اليوم:\n- الحرارة العظمى: {max_t:.1f}°C\n- الأمطار: {precip:.1f} ملم\n\n👇 لمتابعة رادار السحب والأمطار في موريتانيا، حمل تطبيقنا برابط مباشر APK من هنا:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
+                encoded_text = urllib.parse.quote(share_text)
+                whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_text}"
+                
+                st.markdown(
+                    f"""
+                    <div style="text-align: center;">
+                        <a href="{whatsapp_url}" target="_blank" style="text-decoration: none;">
+                            <button style="
+                                background-color: #25D366; 
+                                color: white; 
+                                border: none; 
+                                padding: 12px 24px; 
+                                font-size: 15px; 
+                                font-weight: bold; 
+                                border-radius: 8px; 
+                                cursor: pointer;
+                                box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+                                width: 100%;
+                            ">
+                                🟢 إرسال ملخص الطقس ورابط التطبيق عبر WhatsApp
+                            </button>
+                        </a>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
             else:
-                st.success("🌱 **أجواء مستقرة:** الطقس معتدل ومستقر بوجه عام ومناسب للأنشطة الخارجية المختلفة.")
-            
-            # 🔘 ثالثاً: زر مشاركة الطقس في الأسفل
-            st.write("---")
-            share_text = f"🌤️ طقس {selected_city} اليوم:\n- الحرارة العظمى: {max_t:.1f}°C\n- الأمطار: {precip:.1f} ملم\n\n👇 لمتابعة رادار السحب والأمطار في موريتانيا، حمل تطبيقنا برابط مباشر APK من هنا:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
-            encoded_text = urllib.parse.quote(share_text)
-            whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_text}"
-            
-            st.markdown(
-                f"""
-                <div style="text-align: center;">
-                    <a href="{whatsapp_url}" target="_blank" style="text-decoration: none;">
-                        <button style="
-                            background-color: #25D366; 
-                            color: white; 
-                            border: none; 
-                            padding: 12px 24px; 
-                            font-size: 15px; 
-                            font-weight: bold; 
-                            border-radius: 8px; 
-                            cursor: pointer;
-                            box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
-                            width: 100%;
-                        ">
-                            🟢 إرسال ملخص الطقس ورابط التطبيق عبر WhatsApp
-                        </button>
-                    </a>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
+                st.error("استجابة غير صالحة من خادم النماذج الجوية، يرجى المحاولة مرة أخرى لاحقاً.")
             
         except Exception as e:
-            st.error("حدث خطأ أثناء معالجة بيانات النموذج الرقمي.")
+            st.error("حدث خطأ داخلي أثناء معالجة وقراءة بيانات التوقعات.")
