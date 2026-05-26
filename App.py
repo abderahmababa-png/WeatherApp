@@ -57,7 +57,7 @@ if os.path.exists(LOGO_FILE):
 st.markdown("<h2 style='text-align: center; color: #1E88E5; font-family: Arial; font-size: 24px; direction: rtl; margin-top: 10px;'>طقس روصو | Rosso weather</h2>", unsafe_allow_html=True)
 st.write("---")
 
-# 3. قسم تحديد الموقع والمدى الزمني (البلديات والمقاطعات)
+# 3. قسم تحديد الموقع والمدى الزمني (تعديل إحداثيات انجاكو لليابسة لضمان جلب البيانات)
 st.markdown("### 📍 الإعدادات الجغرافية والزمنية")
 locations_map = {
     "روصو": {"lat": 16.51, "lon": -15.81},
@@ -67,7 +67,7 @@ locations_map = {
     "واد الناقة": {"lat": 17.98, "lon": -15.49},
     "كرمسين": {"lat": 16.49, "lon": -16.20},
     "تكنت": {"lat": 17.24, "lon": -16.14},
-    "انجاكو": {"lat": 16.29, "lon": -16.45}
+    "انجاكو": {"lat": 16.53, "lon": -16.45}  # تم تصحيح خط العرض هنا ليكون فوق اليابسة تماماً
 }
 
 col_city, col_time = st.columns(2)
@@ -125,7 +125,7 @@ if st.button("📊 توليد وتحليل التدوينة الجوية", use_c
             # جلب البيانات من الخادم مع تحديد مهلة حماية لتجنب التجميد والانهيار
             weather_res = requests.get(weather_url, timeout=10)
             
-            # آلية الدفاع ضد أخطاء السيرفر (مثل 502 Bad Gateway) والتحويل الآمن فوراً لسيرفر بديل مستقر
+            # آلية الدفاع ضد أخطاء السيرفر والتحويل الآمن فوراً لسيرفر بديل مستقر
             if weather_res.status_code != 200 or (h > 120 and "hourly" not in weather_res.json()):
                 fallback_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m&forecast_days=7"
                 weather_res = requests.get(fallback_url, timeout=10)
@@ -150,7 +150,6 @@ if st.button("📊 توليد وتحليل التدوينة الجوية", use_c
                     prob_list = [int(x) if x is not None else 0 for x in data.get("precipitation_probability", [])[:actual_h]]
                     prob = max(prob_list) if prob_list else 0
                     
-                    # معالجة الرياح الواقعية بدلاً من قراءات جودة الهواء النظرية
                     wind_speeds = [float(x) if x is not None else 0.0 for x in data.get("wind_speed_10m", [])[:actual_h]]
                     max_wind = max(wind_speeds) if wind_speeds else 0.0
                     
@@ -187,7 +186,6 @@ if st.button("📊 توليد وتحليل التدوينة الجوية", use_c
                     else:
                         moisture_influence = "برغم سيطرة كتل هوائية جافة نسبياً في طبقات الجو المتوسطة تحد من الامتداد الشاقولي للسحب السريعة."
 
-                    # تضمين رصد سرعة الرياح السطحية الحقيقي لتمثيل حالة الأتربة والغبار الميداني بدقة
                     dust_context = ""
                     if max_wind > 24:
                         dust_context = " مع رصد نشاط ملحوظ في سرعة الرياح السطحية الجافة، مما يرفع من احتمالية إثارة الأتربة المحلية العالقة في المناطق المفتوحة والمكشوفة."
