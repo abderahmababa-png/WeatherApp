@@ -116,17 +116,17 @@ if st.button("📊 توليد وتحليل التدوينة الجوية", use_c
         try:
             h = period_map[period]
             
-            # جلب بيانات الطقس والرياح السطحية (تم تعويض مؤشر جودة الهواء العشوائي برصد الرياح الواقعي الحقيقي)
+            # تحديد روابط جلب البيانات الجوية
             if h > 120:
                 weather_url = f"https://api.open-meteo.com/v1/gfs?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&forecast_days=16"
             else:
                 weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,relative_humidity_700hPa,precipitation_probability,precipitation,wind_speed_10m&forecast_days=7"
                 
-            # جلب مواقيت الصلاة من السيرفر الرسمي المتوافق مع توقيت الساحل وموريتانيا
             prayer_url = f"https://api.aladhan.com/v1/timings?latitude={lat}&longitude={lon}&method=3"
             
-            weather_res = requests.get(weather_url)
-            prayer_res = requests.get(prayer_url)
+            # جلب البيانات مع وضع حماية المهلة الزمنية (timeout) لمنع انهيار الاتصال
+            weather_res = requests.get(weather_url, timeout=10)
+            prayer_res = requests.get(prayer_url, timeout=10)
             
             if weather_res.status_code == 200:
                 data = weather_res.json()["hourly"]
@@ -267,7 +267,11 @@ if st.button("📊 توليد وتحليل التدوينة الجوية", use_c
                     unsafe_allow_html=True
                 )
             else:
-                st.error(f"استجابة غير صالحة من خادم النماذج الجوية (رمز الخطأ: {weather_res.status_code})")
+                st.error(f"⚠️ عذراً، خادم النماذج الجوية مشغول حالياً. (رمز الخطأ: {weather_res.status_code})")
             
+        except requests.exceptions.ConnectionError:
+            st.error("📡 **مشكلة في الاتصال:** يبدو أن الاتصال بالشبكة غير مستقر أو أن الخادم قام بإعادة تعيين الاتصال مؤقتاً. يرجى الانتظار ثوانٍ قليلة والمحاولة مرة أخرى.")
+        except requests.exceptions.Timeout:
+            st.error("⏳ **انتهت مهلة الطلب:** استغرق الخادم وقتاً طويلاً للاستجابة. يرجى التحقق من جودة الإنترنت وإعادة المحاولة.")
         except Exception as e:
-            st.error(f"حدث خطأ أثناء معالجة البيانات: {str(e)}")
+            st.error(f"حدث خطأ غير متوقع أثناء معالجة البيانات: {str(e)}")
