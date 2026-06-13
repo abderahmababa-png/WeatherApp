@@ -11,20 +11,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# تحسين مظهر الواجهة وإخفاء شريط أدوات التطوير العلوي (GitHub & Fork)
+# تحسين مظهر الجدول والقوائم عبر CSS مخصص لتناسب الواجهة العربية
 st.markdown("""
     <style>
-    /* توجيه الواجهة بالكامل لتناسب اللغة العربية */
     .reportview-container .main .block-container { direction: rtl; }
     .sidebar .sidebar-content { direction: rtl; }
     th, td { text-align: right !important; }
-    
-    /* إخفاء الشريط العلوي بالكامل (شعار جيت هوب، زر Fork، والنقاط الثلاث) */
-    header { visibility: hidden !important; }
-    
-    /* إخفاء القائمة الافتراضية وتذييل الصفحة الخاص بـ Streamlit لزيادة الاحترافية */
-    #MainMenu { visibility: hidden !important; }
-    footer { visibility: hidden !important; }
     </style>
 """, unsafe_allow_html=True)
 
