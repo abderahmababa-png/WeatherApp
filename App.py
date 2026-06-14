@@ -8,83 +8,62 @@ from datetime import datetime, timedelta
 # ضبط إعدادات الصفحة الأساسية في البداية لتجنب أي تعارض
 st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
-# 1. كود التدمير الشامل والنهائي للفوتر والأزرار السفلية (المستحدث للتحديثات الجديدة)
+# 1. كود الحقن التجميلي القسري بالـ CSS (للاحتياط)
 st.markdown(
     """
     <style>
-    /* إخفاء القائمة العلوية والفوتر القديم والجديد */
-    #MainMenu, header, footer, .stDeployButton {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0px !important;
+    #MainMenu, header, footer, .stDeployButton { display: none !important; visibility: hidden !important; height: 0px !important; }
+    div[data-testid="stFooterStyles"], div[class*="viewerBadge"], div[class*="styles_viewerBadge"], a[href*="streamlit.io"] {
+        display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0px !important;
     }
-    
-    /* استهداف الحاويات البرمجية الحديثة لـ Streamlit التي تعرض علامات الاستضافة */
-    div[data-testid="stFooterStyles"], 
-    div[class*="viewerBadge"], 
-    div[class*="styles_viewerBadge"],
-    a[href*="streamlit.io"] {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        height: 0px !important;
-        pointer-events: none !important;
-    }
-    
-    /* منع ظهور أي نصوص زائدة أسفل حاوية التطبيق الرئيسية */
-    [data-testid="stAppViewContainer"] {
-        padding-bottom: 0px !important;
-        margin-bottom: 0px !important;
-    }
-    
-    /* تحسين أداء اللمس على الهواتف لمنع التهنيج */
-    html, body, [data-testid="stAppViewContainer"] {
-        overscroll-behavior-y: contain !important;
-        touch-action: pan-x pan-y !important;
-    }
-    .block-container {
-        padding-top: 0.5rem !important;
-        padding-bottom: 1rem !important;
-    }
-    .stButton>button {
-        background-color: #1E88E5 !important;
-        color: white !important;
-        border-radius: 6px !important;
-        border: none !important;
-        font-weight: bold !important;
-    }
-    .prayer-row {
-        background-color: #f9f9f9;
-        border: 1px solid #1E88E5;
-        border-radius: 6px;
-        padding: 8px;
-        text-align: center;
-        margin: 5px 0;
-        font-size: 13px;
-    }
-    .prayer-item {
-        display: inline-block;
-        margin: 0 5px;
-        font-weight: bold;
-    }
-    .prayer-time {
-        color: #1E88E5;
-    }
-    .weather-card {
-        background-color: #f0f7ff;
-        border: 1px solid #d0e4ff;
-        border-radius: 6px;
-        padding: 6px;
-        text-align: center;
-        margin: 2px;
-        font-size: 12px;
-    }
+    [data-testid="stAppViewContainer"] { padding-bottom: 0px !important; margin-bottom: 0px !important; }
+    html, body, [data-testid="stAppViewContainer"] { overscroll-behavior-y: contain !important; touch-action: pan-x pan-y !important; }
+    .block-container { padding-top: 0.5rem !important; padding-bottom: 1rem !important; }
+    .stButton>button { background-color: #1E88E5 !important; color: white !important; border-radius: 6px !important; border: none !important; font-weight: bold !important; }
+    .prayer-row { background-color: #f9f9f9; border: 1px solid #1E88E5; border-radius: 6px; padding: 8px; text-align: center; margin: 5px 0; font-size: 13px; }
+    .prayer-item { display: inline-block; margin: 0 5px; font-weight: bold; }
+    .prayer-time { color: #1E88E5; }
+    .weather-card { background-color: #f0f7ff; border: 1px solid #d0e4ff; border-radius: 6px; padding: 6px; text-align: center; margin: 2px; font-size: 12px; }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# 2. إضافة التخزين المؤقت الذكي لجلب البيانات بسرعة فائقة بدون انتظار تحميل الشاشة البيضاء
+# 2. السلاح السري: كود حقن ذكي يخترق الـ Shadow DOM ويمسح الخطوط والأزرار كل نصف ثانية تلقائياً
+components.html(
+    """
+    <script>
+    function killStreamlitBadges() {
+        try {
+            // 1. اختراق الصفحة الأبوية ومسح الفوتر والـ Badges المباشرة
+            var parentDoc = window.parent.document;
+            var selectors = ['footer', '[data-testid="stFooterStyles"]', '.stDeployButton', '[class*="viewerBadge"]', '[class*="styles_viewerBadge"]'];
+            selectors.forEach(function(sel) {
+                var elements = parentDoc.querySelectorAll(sel);
+                elements.forEach(function(el) { el.remove(); });
+            });
+
+            // 2. تدمير الأشرطة الملونة حتى لو كانت مخفية داخل الـ Shadow DOM
+            var allElements = parentDoc.querySelectorAll('*');
+            allElements.forEach(function(el) {
+                if (el.shadowRoot) {
+                    var badElements = el.shadowRoot.querySelectorAll('footer, [class*="viewerBadge"], [data-testid="stFooterStyles"]');
+                    badElements.forEach(function(bad) { bad.remove(); });
+                }
+            });
+        } catch (e) {
+            console.log("إذن الوصول العابر للمتصفح نشط");
+        }
+    }
+    // تشغيل الفحص والحذف الإجباري بشكل مستمر لمنع الأزرار من العودة نهائياً
+    setInterval(killStreamlitBadges, 500);
+    window.addEventListener('load', killStreamlitBadges);
+    </script>
+    """,
+    height=0, width=0
+)
+
+# 3. إضافة التخزين المؤقت الذكي لجلب البيانات بسرعة فائقة بدون انتظار تحميل الشاشة البيضاء
 @st.cache_data(ttl=900)
 def fetch_weather_and_prayer(latitude, longitude):
     urls = [
@@ -124,7 +103,7 @@ def fetch_weather_and_prayer(latitude, longitude):
         
     return weather_data, prayer_json
 
-# 3. شريط الإعدادات الجانبي (Sidebar)
+# 4. شريط الإعدادات الجانبي (Sidebar)
 st.sidebar.markdown("## ⚙️ الإعدادات / Settings")
 lang = st.sidebar.selectbox("🌐 لغة العرض / Language", ["العربية", "English"])
 unit = st.sidebar.selectbox("🌡️ وحدة قياس الحرارة", ["الدرجة المئوية (°C)", "الفهرنهايت (°F)"])
