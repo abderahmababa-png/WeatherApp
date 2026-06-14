@@ -8,12 +8,12 @@ from datetime import datetime, timedelta
 # ضبط إعدادات الصفحة الأساسية في البداية لتجنب أي تعارض
 st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
-# 1. كود الحقن التجميلي المتقدم (تمت إضافة إخفاء الفوتر السفلي المزعج بشكل صارم هنا)
+# 1. كود الحقن التجميلي المتقدم لإخفاء الأزرار السفلية المزعجة والفوتر بالكامل
 st.markdown(
     """
     <style>
     /* إخفاء القائمة العلوية، الفوتر السفلي بالكامل، وعلامات الاستضافة والمطورين */
-    #MainMenu, header, footer, .styles_viewerBadge__Cv5id, .viewerBadge, [data-testid="stFooterStyles"] {
+    #MainMenu, header, footer, .styles_viewerBadge__Cv5id, .viewerBadge, [data-testid="stFooterStyles"], .stDeployButton {
         display: none !important;
         visibility: hidden !important;
     }
@@ -23,7 +23,7 @@ st.markdown(
     div[data-testid="stToolbar"] {
         display: none !important;
     }
-    button[title="View source"], .stDeployButton {
+    button[title="View source"] {
         display: none !important;
     }
     
@@ -75,16 +75,16 @@ st.markdown(
 )
 
 # 2. إضافة التخزين المؤقت الذكي لجلب البيانات بسرعة فائقة بدون انتظار تحميل الشاشة البيضاء
-@st.cache_data(ttl=900)  # يتم تخزين البيانات وتحديثها تلقائياً كل 15 دقيقة في الخلفية لضمان السرعة اللحظية
-def fetch_weather_and_prayer(lat, lon, h):
+@st.cache_data(ttl=900)  # يتم تخزين البيانات وتحديثها تلقائياً كل 15 دقيقة لضمان السرعة اللحظية
+def fetch_weather_and_prayer(latitude, longitude):
     urls = [
-        f"https://api.open-meteo.com/v1/ecmwf?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&forecast_days=7",
-        f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&models=ecmwf_ifs_04&forecast_days=7",
-        f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation,wind_speed_10m&forecast_days=7"
+        f"https://api.open-meteo.com/v1/ecmwf?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&forecast_days=7",
+        f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&models=ecmwf_ifs_04&forecast_days=7",
+        f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation,wind_speed_10m&forecast_days=7"
     ]
-    prayer_url = f"https://api.aladhan.com/v1/timings?latitude={lat}&longitude={lon}&method=3"
+    prayer_url = f"https://api.aladhan.com/v1/timings?latitude={latitude}&longitude={longitude}&method=3"
     
-    data = None
+    weather_data = None
     for url in urls:
         try:
             res = requests.get(url, timeout=5)
@@ -93,13 +93,13 @@ def fetch_weather_and_prayer(lat, lon, h):
                 if potential_data and "temperature_2m" in potential_data:
                     temps_check = [float(v) for v in potential_data["temperature_2m"] if v is not None]
                     if len(temps_check) > 10:
-                        data = potential_data
+                        weather_data = potential_data
                         break
         except Exception:
             continue
 
-    if not data or "temperature_2m" not in data:
-        data = {
+    if not weather_data or "temperature_2m" not in weather_data:
+        weather_data = {
             "temperature_2m": [30.0] * 384,
             "precipitation": [0.0] * 384,
             "precipitation_probability": [0] * 384,
@@ -108,11 +108,11 @@ def fetch_weather_and_prayer(lat, lon, h):
 
     try:
         prayer_res = requests.get(prayer_url, timeout=4)
-        prayer_data = prayer_res.json().get("data", {}).get("timings", {}) if prayer_res.status_code == 200 else {}
+        prayer_json = prayer_res.json().get("data", {}).get("timings", {}) if prayer_res.status_code == 200 else {}
     except Exception:
-        prayer_data = {}
+        prayer_json = {}
         
-    return data, prayer_data
+    return weather_data, prayer_json
 
 # 3. شريط الإعدادات الجانبي (Sidebar)
 st.sidebar.markdown("## ⚙️ الإعدادات / Settings")
@@ -208,5 +208,86 @@ if st.button(txt["generate_btn"], use_container_width=True):
         try:
             h = period_map[period]
             
-            # استدعاء دالة جلب البيانات السريعة والمخزنة مؤقتاً لمنع التهنيج
-            data, prayer_data =
+            # استدعاء دالة جلب البيانات السريعة والمصلحة هنا لإزالة الـ Syntax Error
+            data, prayer_data = fetch_weather_and_prayer(lat, lon)
+            
+            current_hour = datetime.now().hour
+            actual_h = min(h, len(data.get("temperature_2m", [])))
+            
+            temps = data.get("temperature_2m", [30.0] * 384)[:actual_h]
+            precip_list = data.get("precipitation", [0.0] * 384)[:actual_h]
+            prob_list = data.get("precipitation_probability", [0] * 384)[:actual_h]
+            wind_speeds = data.get("wind_speed_10m", [12.0] * 384)[:actual_h]
+            
+            precip = sum(precip_list) if precip_list else 0.0
+            prob = max(prob_list) if prob_list else 0
+            max_t = max(temps) if temps else 30.0
+            
+            current_temp_c = temps[current_hour] if current_hour < len(temps) else (temps[0] if temps else 30.0)
+            current_wind = wind_speeds[current_hour] if current_hour < len(wind_speeds) else 12.0
+            
+            target_idx = current_hour if current_hour < len(precip_list) else 0
+            current_precip = precip_list[target_idx] if precip_list else 0.0
+            
+            if current_precip > 0.1:
+                sky_status = "ممطر 🌧️" if lang == "العربية" else "Rainy 🌧️"
+            elif prob > 40:
+                sky_status = "غائم ☁️" if lang == "العربية" else "Cloudy ☁️"
+            else:
+                sky_status = "مشمس ☀️" if lang == "العربية" else "Sunny ☀️"
+
+            # عرض الواجهة الآمنة المستقرة
+            st.markdown(f"<h5 style='color:#1E88E5; margin:2px 0; {is_rtl}'>{txt['current_status']}</h5>", unsafe_allow_html=True)
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric(txt["temp_label"], format_temp(current_temp_c))
+            m2.metric(txt["sky_label"], sky_status)
+            m3.metric(txt["wind_label"], f"{current_wind:.1f}k/h")
+            m4.metric(txt["max_temp"], format_temp(max_t))
+            
+            with st.expander(txt["weekly_title"], expanded=False):
+                daily_forecasts = []
+                today = datetime.now()
+                for idx in range(0, actual_h, 24):
+                    day_chunk_t = temps[idx:idx+24]
+                    if day_chunk_t:
+                        day_date = (today + timedelta(days=idx//24)).strftime('%m-%d')
+                        day_max = max(day_chunk_t)
+                        day_rain = sum(precip_list[idx:idx+24]) if idx+24 <= len(precip_list) else 0.0
+                        day_wind = max(wind_speeds[idx:idx+24]) if idx+24 <= len(wind_speeds) else 12.0
+                        icon = "🌧️" if day_rain > 0.2 else ("💨" if day_wind > 25 else "☀️")
+                        daily_forecasts.append({"date": day_date, "max": day_max, "rain": day_rain, "wind": day_wind, "icon": icon})
+                
+                if display_style == "بطاقات صغيرة لكل يوم":
+                    cols = st.columns(min(len(daily_forecasts), 5))
+                    for i, df in enumerate(daily_forecasts):
+                        with cols[i % 5]:
+                            st.markdown(f'<div class="weather-card"><b>{df["date"]}</b><br>{df["icon"]}<br>{format_temp(df["max"])}</div>', unsafe_allow_html=True)
+                else:
+                    import pandas as pd
+                    st.dataframe(pd.DataFrame(daily_forecasts), use_container_width=True)
+
+            st.markdown(f"<h5 style='margin:4px 0; {is_rtl}'>{txt['expert_blog']}</h5>", unsafe_allow_html=True)
+            blog = f"استقرار مؤشر {selected_city} ذروة {format_temp(max_t)}، احتمالية أمطار {prob}% بتراكم {precip:.1f}ملم وفقاً للبيانات الأوروبية المحدثة."
+            st.info(blog)
+            
+            if prayer_data:
+                st.markdown(
+                    f"""
+                    <div class="prayer-row" style="{is_rtl}">
+                        <b>{txt['prayer_title']} {selected_city}:</b> 
+                        <span class="prayer-item">{txt['fajr']}: <span class="prayer-time">{prayer_data.get('Fajr')}</span></span> | 
+                        <span class="prayer-item">{txt['dhuhr']}: <span class="prayer-time">{prayer_data.get('Dhuhr')}</span></span> | 
+                        <span class="prayer-item">{txt['asr']}: <span class="prayer-time">{prayer_data.get('Asr')}</span></span> | 
+                        <span class="prayer-item">{txt['maghrib']}: <span class="prayer-time">{prayer_data.get('Maghrib')}</span></span> | 
+                        <span class="prayer-item">{txt['isha']}: <span class="prayer-time">{prayer_data.get('Isha')}</span></span>
+                    </div>
+                    """, 
+                    unsafe_allow_html=True
+                )
+            
+            share_text = f"🌤️ طقس {selected_city}:\n- الحرارة: {format_temp(max_t)}\n- الأمطار: {precip:.1f} ملم\n\n👇 حمل التطبيق APK:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
+            whatsapp_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(share_text)}"
+            st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="text-decoration:none;"><button style="background-color:#25D366;color:white;border:none;padding:6px;font-size:13px;border-radius:4px;width:100%;cursor:pointer;margin-top:2px;">{txt["whatsapp_btn"]}</button></a>', unsafe_allow_html=True)
+            
+        except Exception as e:
+            st.error("جاري استعادة الاتصال واستقرار البيانات، يرجى الضغط مرة أخرى للتحديث.")
