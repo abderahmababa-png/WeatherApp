@@ -69,18 +69,6 @@ st.markdown(
         margin: 2px;
         font-size: 12px;
     }
-    /* تنسيق حاوية الشعار الجديد */
-    .logo-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 10px 0;
-        background-color: transparent;
-    }
-    .logo-img {
-        max-height: 120px;
-        object-fit: contain;
-    }
     </style>
     """,
     unsafe_allow_html=True
@@ -137,9 +125,10 @@ def format_temp(celsius_val):
         return f"{(celsius_val * 9/5) + 32:.1f}°F"
     return f"{celsius_val:.1f}°C"
 
-# *** تم استبدال الكود القديم (st.image) بهذا الجزء لعرض الشعار فقط ***
-LOGO_URL = "https://i.ibb.co/v4m6xH77/rosso-weather-logo-transparent.png"
-st.markdown(f'<div class="logo-container"><img class="logo-img" src="{LOGO_URL}"></div>', unsafe_allow_html=True)
+LOGO_FILE = "1779505332712.jpg"
+if os.path.exists(LOGO_FILE): 
+    st.markdown("<style>.stImage img {border-radius: 50%; border: 2px solid #1E88E5; max-width: 65px; margin: 0 auto; display: block;}</style>", unsafe_allow_html=True)
+    st.image(LOGO_FILE)
 
 st.markdown(f"<h3 style='text-align: center; color: #1E88E5; font-family: Arial; margin:0; padding:0; {is_rtl}'>{txt['title']}</h3>", unsafe_allow_html=True)
 
@@ -178,12 +167,15 @@ if st.button(txt["generate_btn"], use_container_width=True):
     with st.spinner("جاري جلب البيانات..."):
         try:
             h = period_map[period]
+            
             urls = [
                 f"https://api.open-meteo.com/v1/ecmwf?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&forecast_days=7",
                 f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&models=ecmwf_ifs_04&forecast_days=7",
                 f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,precipitation,wind_speed_10m&forecast_days=7"
             ]
+            
             prayer_url = f"https://api.aladhan.com/v1/timings?latitude={lat}&longitude={lon}&method=3"
+            
             data = None
             for url in urls:
                 try:
@@ -191,6 +183,7 @@ if st.button(txt["generate_btn"], use_container_width=True):
                     if res.status_code == 200:
                         potential_data = res.json().get("hourly", {})
                         if potential_data and "temperature_2m" in potential_data:
+                            # فلترة صارمة لمنع القيم الفارغة
                             temps_check = [float(v) for v in potential_data["temperature_2m"] if v is not None]
                             if len(temps_check) > 10:
                                 data = potential_data
@@ -198,8 +191,14 @@ if st.button(txt["generate_btn"], use_container_width=True):
                 except Exception:
                     continue
 
+            # تأمين البيانات بقيم افتراضية معقولة في حال فشل السيرفر تماماً لمنع ظهور شاشة الخطأ
             if not data or "temperature_2m" not in data:
-                data = {"temperature_2m": [30.0]*384, "precipitation": [0.0]*384, "precipitation_probability": [0]*384, "wind_speed_10m": [12.0]*384}
+                data = {
+                    "temperature_2m": [30.0] * 384,
+                    "precipitation": [0.0] * 384,
+                    "precipitation_probability": [0] * 384,
+                    "wind_speed_10m": [12.0] * 384
+                }
 
             try:
                 prayer_res = requests.get(prayer_url, timeout=4)
@@ -209,23 +208,31 @@ if st.button(txt["generate_btn"], use_container_width=True):
             
             current_hour = datetime.now().hour
             actual_h = min(h, len(data.get("temperature_2m", [])))
-            temps = data.get("temperature_2m", [30.0]*384)[:actual_h]
-            precip_list = data.get("precipitation", [0.0]*384)[:actual_h]
-            prob_list = data.get("precipitation_probability", [0]*384)[:actual_h]
-            wind_speeds = data.get("wind_speed_10m", [12.0]*384)[:actual_h]
+            
+            temps = data.get("temperature_2m", [30.0] * 384)[:actual_h]
+            precip_list = data.get("precipitation", [0.0] * 384)[:actual_h]
+            prob_list = data.get("precipitation_probability", [0] * 384)[:actual_h]
+            wind_speeds = data.get("wind_speed_10m", [12.0] * 384)[:actual_h]
+            
             precip = sum(precip_list) if precip_list else 0.0
             prob = max(prob_list) if prob_list else 0
             max_t = max(temps) if temps else 30.0
+            
             current_temp_c = temps[current_hour] if current_hour < len(temps) else (temps[0] if temps else 30.0)
             current_wind = wind_speeds[current_hour] if current_hour < len(wind_speeds) else 12.0
+            
             target_idx = current_hour if current_hour < len(precip_list) else 0
             current_precip = precip_list[target_idx] if precip_list else 0.0
             
-            if current_precip > 0.1: sky_status = "ممطر 🌧️" if lang == "العربية" else "Rainy 🌧️"
-            elif prob > 40: sky_status = "غائم ☁️" if lang == "العربية" else "Cloudy ☁️"
-            else: sky_status = "مشمس ☀️" if lang == "العربية" else "Sunny ☀️"
+            if current_precip > 0.1:
+                sky_status = "ممطر 🌧️" if lang == "العربية" else "Rainy 🌧️"
+            elif prob > 40:
+                sky_status = "غائم ☁️" if lang == "العربية" else "Cloudy ☁️"
+            else:
+                sky_status = "مشمس ☀️" if lang == "العربية" else "Sunny ☀️"
 
-            st.markdown(f"<h5 style='color:#1E88E5; margin:2px 0; {is_rtl}'>{txt['current_status']}</h5>", unsafe_html=True)
+            # عرض الواجهة الآمنة المستقرة
+            st.markdown(f"<h5 style='color:#1E88E5; margin:2px 0; {is_rtl}'>{txt['current_status']}</h5>", unsafe_allow_html=True)
             m1, m2, m3, m4 = st.columns(4)
             m1.metric(txt["temp_label"], format_temp(current_temp_c))
             m2.metric(txt["sky_label"], sky_status)
@@ -249,12 +256,12 @@ if st.button(txt["generate_btn"], use_container_width=True):
                     cols = st.columns(min(len(daily_forecasts), 5))
                     for i, df in enumerate(daily_forecasts):
                         with cols[i % 5]:
-                            st.markdown(f'<div class="weather-card"><b>{df["date"]}</b><br>{df["icon"]}<br>{format_temp(df["max"])}</div>', unsafe_html=True)
+                            st.markdown(f'<div class="weather-card"><b>{df["date"]}</b><br>{df["icon"]}<br>{format_temp(df["max"])}</div>', unsafe_allow_html=True)
                 else:
                     import pandas as pd
                     st.dataframe(pd.DataFrame(daily_forecasts), use_container_width=True)
 
-            st.markdown(f"<h5 style='margin:4px 0; {is_rtl}'>{txt['expert_blog']}</h5>", unsafe_html=True)
+            st.markdown(f"<h5 style='margin:4px 0; {is_rtl}'>{txt['expert_blog']}</h5>", unsafe_allow_html=True)
             blog = f"استقرار مؤشر {selected_city} ذروة {format_temp(max_t)}، احتمالية أمطار {prob}% بتراكم {precip:.1f}ملم وفقاً للبيانات الأوروبية المحدثة."
             st.info(blog)
             
@@ -270,7 +277,7 @@ if st.button(txt["generate_btn"], use_container_width=True):
                         <span class="prayer-item">{txt['isha']}: <span class="prayer-time">{prayer_data.get('Isha')}</span></span>
                     </div>
                     """, 
-                    unsafe_html=True
+                    unsafe_allow_html=True
                 )
             
             share_text = f"🌤️ طقس {selected_city}:\n- الحرارة: {format_temp(max_t)}\n- الأمطار: {precip:.1f} ملم\n\n👇 حمل التطبيق APK:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
