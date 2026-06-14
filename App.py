@@ -8,23 +8,28 @@ from datetime import datetime, timedelta
 # ضبط إعدادات الصفحة الأساسية في البداية لتجنب أي تعارض
 st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
-# 1. كود الحقن التجميلي المتقدم لإخفاء الأزرار السفلية المزعجة والفوتر بالكامل
+# 1. كود الحقن التجميلي القسري (تدمير الفوتر والأزرار السفلية بجميع مسمياتها البرمجية)
 st.markdown(
     """
     <style>
-    /* إخفاء القائمة العلوية، الفوتر السفلي بالكامل، وعلامات الاستضافة والمطورين */
-    #MainMenu, header, footer, .styles_viewerBadge__Cv5id, .viewerBadge, [data-testid="stFooterStyles"], .stDeployButton {
+    /* إخفاء وتدمير أي عنصر ينتمي للفوتر أو أشرطة المطورين في أسفل وأعلى الصفحة */
+    footer, .viewerBadge, [data-testid="stFooterStyles"], .styles_viewerBadge__Cv5id, .stDeployButton {
         display: none !important;
         visibility: hidden !important;
+        height: 0px !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
     }
-    header[data-testid="stHeader"] {
+    header, header[data-testid="stHeader"], #MainMenu, div[data-testid="stToolbar"], button[title="View source"] {
         display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        opacity: 0 !important;
     }
-    div[data-testid="stToolbar"] {
-        display: none !important;
-    }
-    button[title="View source"] {
-        display: none !important;
+    
+    /* إزالة الفراغات الهامشية التي تتركها الأزرار المخفية في الأسفل */
+    .stApp {
+        bottom: 0px !important;
     }
     
     /* تحسين أداء اللمس على الهواتف لمنع التهنيج */
@@ -208,7 +213,6 @@ if st.button(txt["generate_btn"], use_container_width=True):
         try:
             h = period_map[period]
             
-            # استدعاء دالة جلب البيانات السريعة والمصلحة هنا لإزالة الـ Syntax Error
             data, prayer_data = fetch_weather_and_prayer(lat, lon)
             
             current_hour = datetime.now().hour
