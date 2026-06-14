@@ -8,31 +8,23 @@ from datetime import datetime, timedelta
 # ضبط إعدادات الصفحة الأساسية في البداية لتجنب أي تعارض
 st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
-# 1. كود الحقن التجميلي القسري (تدمير الفوتر والأزرار السفلية بجميع مسمياتها البرمجية)
+# 1. كود الحقن التجميلي القسري بالـ CSS
 st.markdown(
     """
     <style>
-    /* إخفاء وتدمير أي عنصر ينتمي للفوتر أو أشرطة المطورين في أسفل وأعلى الصفحة */
-    footer, .viewerBadge, [data-testid="stFooterStyles"], .styles_viewerBadge__Cv5id, .stDeployButton {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0px !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-    }
-    header, header[data-testid="stHeader"], #MainMenu, div[data-testid="stToolbar"], button[title="View source"] {
+    /* إخفاء القائمة العلوية والفوتر */
+    #MainMenu, header, footer, .viewerBadge, [data-testid="stFooterStyles"], .styles_viewerBadge__Cv5id, .stDeployButton {
         display: none !important;
         visibility: hidden !important;
         height: 0px !important;
         opacity: 0 !important;
     }
-    
-    /* إزالة الفراغات الهامشية التي تتركها الأزرار المخفية في الأسفل */
-    .stApp {
-        bottom: 0px !important;
+    header[data-testid="stHeader"], div[data-testid="stToolbar"], button[title="View source"] {
+        display: none !important;
+        visibility: hidden !important;
     }
     
-    /* تحسين أداء اللمس على الهواتف لمنع التهنيج */
+    /* تحسين أداء اللمس على الهواتف */
     html, body, [data-testid="stAppViewContainer"] {
         overscroll-behavior-y: contain !important;
         touch-action: pan-x pan-y !important;
@@ -79,13 +71,35 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 2. إضافة التخزين المؤقت الذكي لجلب البيانات بسرعة فائقة بدون انتظار تحميل الشاشة البيضاء
-@st.cache_data(ttl=900)  # يتم تخزين البيانات وتحديثها تلقائياً كل 15 دقيقة لضمان السرعة اللحظية
+# 2. كود الجافا سكريبت الذكي لحذف الأزرار السفلية (الخط الأحمر والأخضر) بشكل نهائي من المتصفح
+components.html(
+    """
+    <script>
+    function removeStreamlitElements() {
+        // البحث عن الفوتر بجميع الطرق الممكنة وحذفه
+        var footers = window.parent.document.getElementsByTagName('footer');
+        for (var i = 0; i < footers.length; i++) { footers[i].style.display = 'none'; }
+        
+        // البحث عن أزرار الاستضافة والتاج الأحمر والأخضر وحذفها
+        var badges = window.parent.document.querySelectorAll('[class*="viewerBadge"], [data-testid="stFooterStyles"], .stDeployButton');
+        badges.forEach(function(el) { el.style.display = 'none'; });
+    }
+    // تشغيل الحذف عند تحميل الصفحة وتكراره كل ثانية لضمان عدم ظهورها مجدداً
+    window.addEventListener('load', removeStreamlitElements);
+    setInterval(removeStreamlitElements, 1000);
+    </script>
+    """,
+    height=0,
+    width=0
+)
+
+# 3. إضافة التخزين المؤقت الذكي لجلب البيانات بسرعة فائقة بدون انتظار تحميل الشاشة البيضاء
+@st.cache_data(ttl=900)
 def fetch_weather_and_prayer(latitude, longitude):
     urls = [
         f"https://api.open-meteo.com/v1/ecmwf?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&forecast_days=7",
         f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&models=ecmwf_ifs_04&forecast_days=7",
-        f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation,wind_speed_10m&forecast_days=7"
+        f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_wind_speed_10m&forecast_days=7"
     ]
     prayer_url = f"https://api.aladhan.com/v1/timings?latitude={latitude}&longitude={longitude}&method=3"
     
@@ -119,7 +133,7 @@ def fetch_weather_and_prayer(latitude, longitude):
         
     return weather_data, prayer_json
 
-# 3. شريط الإعدادات الجانبي (Sidebar)
+# 4. شريط الإعدادات الجانبي (Sidebar)
 st.sidebar.markdown("## ⚙️ الإعدادات / Settings")
 lang = st.sidebar.selectbox("🌐 لغة العرض / Language", ["العربية", "English"])
 unit = st.sidebar.selectbox("🌡️ وحدة قياس الحرارة", ["الدرجة المئوية (°C)", "الفهرنهايت (°F)"])
@@ -201,7 +215,7 @@ if show_radar:
     <div style="width: 100%; height: 260px; border-radius: 8px; overflow: hidden; border: 2px solid #1E88E5; position: relative; background-color: #1a1a1a; margin-bottom:5px;">
         <div style="width: 100%; height: 100%; top: -45px; position: absolute;">
             <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=7&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&type=map" 
-                    width="100%" height="350px" frameborder="0" style="border:0; clip-path: inset(45px 0px 45px 0px);">
+                    width="100%" height="350px" frameborder="0; clip-path: inset(45px 0px 45px 0px);">
             </iframe>
         </div>
     </div>
