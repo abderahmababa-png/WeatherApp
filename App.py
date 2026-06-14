@@ -5,71 +5,89 @@ import streamlit.components.v1 as components
 import urllib.parse
 from datetime import datetime, timedelta
 
-# ضبط إعدادات الصفحة الأساسية في البداية لتجنب أي تعارض
+# 1. ضبط الصفحة الأساسية (يجيب أن يكون أول سطر برمي دائماً)
 st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
-# 1. كود الحقن التجميلي القسري بالـ CSS (للاحتياط)
+# 2. كود الـ CSS القاطع لاستهداف الفراغات الهيكلية للواجهة
 st.markdown(
     """
     <style>
-    #MainMenu, header, footer, .stDeployButton { display: none !important; visibility: hidden !important; height: 0px !important; }
-    div[data-testid="stFooterStyles"], div[class*="viewerBadge"], div[class*="styles_viewerBadge"], a[href*="streamlit.io"] {
-        display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0px !important;
+    /* إخفاء القوائم وأشرطة التمرير والفوتر كلياً */
+    #MainMenu, header, footer, .stDeployButton, [data-testid="stHeader"] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
     }
-    [data-testid="stAppViewContainer"] { padding-bottom: 0px !important; margin-bottom: 0px !important; }
-    html, body, [data-testid="stAppViewContainer"] { overscroll-behavior-y: contain !important; touch-action: pan-x pan-y !important; }
-    .block-container { padding-top: 0.5rem !important; padding-bottom: 1rem !important; }
-    .stButton>button { background-color: #1E88E5 !important; color: white !important; border-radius: 6px !important; border: none !important; font-weight: bold !important; }
-    .prayer-row { background-color: #f9f9f9; border: 1px solid #1E88E5; border-radius: 6px; padding: 8px; text-align: center; margin: 5px 0; font-size: 13px; }
-    .prayer-item { display: inline-block; margin: 0 5px; font-weight: bold; }
-    .prayer-time { color: #1E88E5; }
-    .weather-card { background-color: #f0f7ff; border: 1px solid #d0e4ff; border-radius: 6px; padding: 6px; text-align: center; margin: 2px; font-size: 12px; }
+    
+    /* استهداف الحاويات العائمة السفلية التي تظهر في الهواتف */
+    div[data-testid="stFooterStyles"], 
+    div[class*="viewerBadge"], 
+    div[class*="styles_viewerBadge"],
+    .viewerBadge {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0px !important;
+        position: absolute !important;
+        bottom: -9999px !important;
+    }
+    
+    /* إلغاء أي هوامش سفلية فارغة تركتها الأزرار المحذوفة */
+    .main .block-container {
+        padding-bottom: 0px !important;
+        margin-bottom: 0px !important;
+    }
+    
+    /* تحسين أداء اللمس والتحجيم في الهواتف */
+    html, body, [data-testid="stAppViewContainer"] {
+        overscroll-behavior-y: contain !important;
+        touch-action: pan-x pan-y !important;
+    }
+    .stButton>button {
+        background-color: #1E88E5 !important;
+        color: white !important;
+        border-radius: 6px !important;
+        border: none !important;
+        font-weight: bold !important;
+    }
+    .prayer-row {
+        background-color: #f9f9f9;
+        border: 1px solid #1E88E5;
+        border-radius: 6px;
+        padding: 8px;
+        text-align: center;
+        margin: 5px 0;
+        font-size: 13px;
+    }
+    .prayer-item {
+        display: inline-block;
+        margin: 0 5px;
+        font-weight: bold;
+    }
+    .prayer-time {
+        color: #1E88E5;
+    }
+    .weather-card {
+        background-color: #f0f7ff;
+        border: 1px solid #d0e4ff;
+        border-radius: 6px;
+        padding: 6px;
+        text-align: center;
+        margin: 2px;
+        font-size: 12px;
+    }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# 2. السلاح السري: كود حقن ذكي يخترق الـ Shadow DOM ويمسح الخطوط والأزرار كل نصف ثانية تلقائياً
-components.html(
-    """
-    <script>
-    function killStreamlitBadges() {
-        try {
-            // 1. اختراق الصفحة الأبوية ومسح الفوتر والـ Badges المباشرة
-            var parentDoc = window.parent.document;
-            var selectors = ['footer', '[data-testid="stFooterStyles"]', '.stDeployButton', '[class*="viewerBadge"]', '[class*="styles_viewerBadge"]'];
-            selectors.forEach(function(sel) {
-                var elements = parentDoc.querySelectorAll(sel);
-                elements.forEach(function(el) { el.remove(); });
-            });
-
-            // 2. تدمير الأشرطة الملونة حتى لو كانت مخفية داخل الـ Shadow DOM
-            var allElements = parentDoc.querySelectorAll('*');
-            allElements.forEach(function(el) {
-                if (el.shadowRoot) {
-                    var badElements = el.shadowRoot.querySelectorAll('footer, [class*="viewerBadge"], [data-testid="stFooterStyles"]');
-                    badElements.forEach(function(bad) { bad.remove(); });
-                }
-            });
-        } catch (e) {
-            console.log("إذن الوصول العابر للمتصفح نشط");
-        }
-    }
-    // تشغيل الفحص والحذف الإجباري بشكل مستمر لمنع الأزرار من العودة نهائياً
-    setInterval(killStreamlitBadges, 500);
-    window.addEventListener('load', killStreamlitBadges);
-    </script>
-    """,
-    height=0, width=0
-)
-
-# 3. إضافة التخزين المؤقت الذكي لجلب البيانات بسرعة فائقة بدون انتظار تحميل الشاشة البيضاء
+# 3. دالة جلب البيانات السريعة والآمنة المدعومة بالتخزين المؤقت
 @st.cache_data(ttl=900)
 def fetch_weather_and_prayer(latitude, longitude):
     urls = [
         f"https://api.open-meteo.com/v1/ecmwf?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&forecast_days=7",
         f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&models=ecmwf_ifs_04&forecast_days=7",
-        f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_wind_speed_10m&forecast_days=7"
+        f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation,wind_speed_10m&forecast_days=7"
     ]
     prayer_url = f"https://api.aladhan.com/v1/timings?latitude={latitude}&longitude={longitude}&method=3"
     
@@ -196,7 +214,6 @@ if st.button(txt["generate_btn"], use_container_width=True):
     with st.spinner("جاري جلب البيانات..."):
         try:
             h = period_map[period]
-            
             data, prayer_data = fetch_weather_and_prayer(lat, lon)
             
             current_hour = datetime.now().hour
@@ -224,7 +241,6 @@ if st.button(txt["generate_btn"], use_container_width=True):
             else:
                 sky_status = "مشمس ☀️" if lang == "العربية" else "Sunny ☀️"
 
-            # عرض الواجهة الآمنة المستقرة
             st.markdown(f"<h5 style='color:#1E88E5; margin:2px 0; {is_rtl}'>{txt['current_status']}</h5>", unsafe_allow_html=True)
             m1, m2, m3, m4 = st.columns(4)
             m1.metric(txt["temp_label"], format_temp(current_temp_c))
