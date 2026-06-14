@@ -8,32 +8,30 @@ from datetime import datetime, timedelta
 # ضبط إعدادات الصفحة الأساسية في البداية لتجنب أي تعارض
 st.set_page_config(page_title="طقس روصو Rosso weather", page_icon="🌤️", layout="centered")
 
-# 1. كود التدمير الشامل للفوتر والأزرار السفلية عبر الـ CSS القسري
+# 1. كود التدمير الشامل والنهائي للفوتر والأزرار السفلية (المستحدث للتحديثات الجديدة)
 st.markdown(
     """
     <style>
-    /* تصفير حجم وإخفاء الفوتر والأزرار السفلية تماماً ومنعها من أخذ أي مساحة */
-    footer, [data-testid="stFooterStyles"], .viewerBadge, .styles_viewerBadge__Cv5id, .stDeployButton {
+    /* إخفاء القائمة العلوية والفوتر القديم والجديد */
+    #MainMenu, header, footer, .stDeployButton {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+    }
+    
+    /* استهداف الحاويات البرمجية الحديثة لـ Streamlit التي تعرض علامات الاستضافة */
+    div[data-testid="stFooterStyles"], 
+    div[class*="viewerBadge"], 
+    div[class*="styles_viewerBadge"],
+    a[href*="streamlit.io"] {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
         height: 0px !important;
-        max-height: 0px !important;
-        min-height: 0px !important;
-        margin: 0px !important;
-        padding: 0px !important;
-        overflow: hidden !important;
+        pointer-events: none !important;
     }
     
-    /* إخفاء القوائم العلوية وأشرطة المطورين */
-    header, header[data-testid="stHeader"], #MainMenu, div[data-testid="stToolbar"], button[title="View source"] {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        height: 0px !important;
-    }
-    
-    /* إجبار التطبيق على التمدد للأسفل لملء الفراغ المخفي */
+    /* منع ظهور أي نصوص زائدة أسفل حاوية التطبيق الرئيسية */
     [data-testid="stAppViewContainer"] {
         padding-bottom: 0px !important;
         margin-bottom: 0px !important;
@@ -92,7 +90,7 @@ def fetch_weather_and_prayer(latitude, longitude):
     urls = [
         f"https://api.open-meteo.com/v1/ecmwf?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&forecast_days=7",
         f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m&models=ecmwf_ifs_04&forecast_days=7",
-        f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation,wind_speed_10m&forecast_days=7"
+        f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&hourly=temperature_2m,precipitation_wind_speed_10m&forecast_days=7"
     ]
     prayer_url = f"https://api.aladhan.com/v1/timings?latitude={latitude}&longitude={longitude}&method=3"
     
