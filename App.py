@@ -76,9 +76,9 @@ st.markdown(
 
 # 2. شريط الإعدادات الجانبي (Sidebar)
 st.sidebar.markdown("## ⚙️ الإعدادات / Settings")
-lang = st.sidebar.selectbox("🌐 لغة العرض / Language", ["العربية", "English"])
-unit = st.sidebar.selectbox("🌡️ وحدة قياس الحرارة", ["الدرجة المئوية (°C)", "الفهرنهايت (°F)"])
-display_style = st.sidebar.selectbox("📊 شكل عرض التوقعات", ["بطاقات صغيرة لكل يوم", "جدول منظم"])
+lang = st.sidebar.selectbox("🌐 لغة العرض / Language", ["العربية", "English"], key="lang_selector")
+unit = st.sidebar.selectbox("🌡️ وحدة قياس الحرارة", ["الدرجة المئوية (°C)", "الفهرنهايت (°F)"], key="unit_selector")
+display_style = st.sidebar.selectbox("📊 شكل عرض التوقعات", ["بطاقات صغيرة لكل يوم", "جدول منظم"], key="style_selector")
 
 strings = {
     "العربية": {
@@ -139,31 +139,39 @@ locations_map = {
     "تكنت": {"lat": 17.24, "lon": -16.14}, "انجاكو": {"lat": 16.53, "lon": -16.45}
 }
 
-col_city, col_time, col_rad_check = st.columns([2, 1.5, 1.5])
-with col_city:
-    selected_city = st.selectbox(txt["select_city"], list(locations_map.keys()), label_visibility="collapsed")
-with col_time:
-    period_map = {"24 ساعة": 24, "5 أيام": 120, "10 أيام": 240, "16 يوماً": 384}
-    period = st.selectbox(txt["select_period"], list(period_map.keys()), label_visibility="collapsed")
-with col_rad_check:
-    show_radar = st.checkbox(txt["radar"], value=False)
+# وضع أزرار الخيارات داخل حاوية مستقرة لمنع التهنيج
+with st.container():
+    col_city, col_time, col_rad_check = st.columns([2, 1.5, 1.5])
+    with col_city:
+        selected_city = st.selectbox(txt["select_city"], list(locations_map.keys()), label_visibility="collapsed", key="city_box")
+    with col_time:
+        period_map = {"24 ساعة": 24, "5 أيام": 120, "10 أيام": 240, "16 يوماً": 384}
+        period = st.selectbox(txt["select_period"], list(period_map.keys()), label_visibility="collapsed", key="period_box")
+    with col_rad_check:
+        show_radar = st.checkbox(txt["radar"], value=False, key="radar_check")
 
 lat = locations_map[selected_city]["lat"]
 lon = locations_map[selected_city]["lon"]
 
+# عزل الرادار تماماً في حاوية خاصة به لكي لا يؤثر على العناصر البرمجية الأخرى
 if show_radar:
-    custom_map_html = f"""
-    <div style="width: 100%; height: 260px; border-radius: 8px; overflow: hidden; border: 2px solid #1E88E5; position: relative; background-color: #1a1a1a; margin-bottom:5px;">
-        <div style="width: 100%; height: 100%; top: -45px; position: absolute;">
-            <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=7&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&type=map" 
-                    width="100%" height="350px" frameborder="0" style="border:0; clip-path: inset(45px 0px 45px 0px);">
-            </iframe>
+    radar_container = st.container()
+    with radar_container:
+        custom_map_html = f"""
+        <div style="width: 100%; height: 260px; border-radius: 8px; overflow: hidden; border: 2px solid #1E88E5; position: relative; background-color: #1a1a1a; margin-bottom:5px;">
+            <div style="width: 100%; height: 100%; top: -45px; position: absolute;">
+                <iframe src="https://embed.windy.com/embed2.html?lat={lat}&lon={lon}&zoom=7&overlay=rain&product=ecmwf&menu=&message=&marker=&calendar=now&type=map" 
+                        width="100%" height="350px" frameborder="0" style="border:0; clip-path: inset(45px 0px 45px 0px);">
+                </iframe>
+            </div>
         </div>
-    </div>
-    """
-    components.html(custom_map_html, height=265)
+        """
+        components.html(custom_map_html, height=265)
 
-if st.button(txt["generate_btn"], use_container_width=True):
+# حاوية مستقرة مسبقاً لعرض النتائج بداخلها بسلاسة
+results_container = st.container()
+
+if st.button(txt["generate_btn"], use_container_width=True, key="submit_btn"):
     with st.spinner("جاري جلب البيانات..."):
         try:
             h = period_map[period]
@@ -183,7 +191,6 @@ if st.button(txt["generate_btn"], use_container_width=True):
                     if res.status_code == 200:
                         potential_data = res.json().get("hourly", {})
                         if potential_data and "temperature_2m" in potential_data:
-                            # فلترة صارمة لمنع القيم الفارغة
                             temps_check = [float(v) for v in potential_data["temperature_2m"] if v is not None]
                             if len(temps_check) > 10:
                                 data = potential_data
@@ -191,7 +198,6 @@ if st.button(txt["generate_btn"], use_container_width=True):
                 except Exception:
                     continue
 
-            # تأمين البيانات بقيم افتراضية معقولة في حال فشل السيرفر تماماً لمنع ظهور شاشة الخطأ
             if not data or "temperature_2m" not in data:
                 data = {
                     "temperature_2m": [30.0] * 384,
@@ -231,58 +237,59 @@ if st.button(txt["generate_btn"], use_container_width=True):
             else:
                 sky_status = "مشمس ☀️" if lang == "العربية" else "Sunny ☀️"
 
-            # عرض الواجهة الآمنة المستقرة
-            st.markdown(f"<h5 style='color:#1E88E5; margin:2px 0; {is_rtl}'>{txt['current_status']}</h5>", unsafe_allow_html=True)
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric(txt["temp_label"], format_temp(current_temp_c))
-            m2.metric(txt["sky_label"], sky_status)
-            m3.metric(txt["wind_label"], f"{current_wind:.1f}k/h")
-            m4.metric(txt["max_temp"], format_temp(max_t))
-            
-            with st.expander(txt["weekly_title"], expanded=False):
-                daily_forecasts = []
-                today = datetime.now()
-                for idx in range(0, actual_h, 24):
-                    day_chunk_t = temps[idx:idx+24]
-                    if day_chunk_t:
-                        day_date = (today + timedelta(days=idx//24)).strftime('%m-%d')
-                        day_max = max(day_chunk_t)
-                        day_rain = sum(precip_list[idx:idx+24]) if idx+24 <= len(precip_list) else 0.0
-                        day_wind = max(wind_speeds[idx:idx+24]) if idx+24 <= len(wind_speeds) else 12.0
-                        icon = "🌧️" if day_rain > 0.2 else ("💨" if day_wind > 25 else "☀️")
-                        daily_forecasts.append({"date": day_date, "max": day_max, "rain": day_rain, "wind": day_wind, "icon": icon})
+            # طباعة النتائج داخل الحاوية المخصصة المستقرة لحماية الواجهة من الانهيار
+            with results_container:
+                st.markdown(f"<h5 style='color:#1E88E5; margin:2px 0; {is_rtl}'>{txt['current_status']}</h5>", unsafe_allow_html=True)
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric(txt["temp_label"], format_temp(current_temp_c))
+                m2.metric(txt["sky_label"], sky_status)
+                m3.metric(txt["wind_label"], f"{current_wind:.1f}k/h")
+                m4.metric(txt["max_temp"], format_temp(max_t))
                 
-                if display_style == "بطاقات صغيرة لكل يوم":
-                    cols = st.columns(min(len(daily_forecasts), 5))
-                    for i, df in enumerate(daily_forecasts):
-                        with cols[i % 5]:
-                            st.markdown(f'<div class="weather-card"><b>{df["date"]}</b><br>{df["icon"]}<br>{format_temp(df["max"])}</div>', unsafe_allow_html=True)
-                else:
-                    import pandas as pd
-                    st.dataframe(pd.DataFrame(daily_forecasts), use_container_width=True)
+                with st.expander(txt["weekly_title"], expanded=False):
+                    daily_forecasts = []
+                    today = datetime.now()
+                    for idx in range(0, actual_h, 24):
+                        day_chunk_t = temps[idx:idx+24]
+                        if day_chunk_t:
+                            day_date = (today + timedelta(days=idx//24)).strftime('%m-%d')
+                            day_max = max(day_chunk_t)
+                            day_rain = sum(precip_list[idx:idx+24]) if idx+24 <= len(precip_list) else 0.0
+                            day_wind = max(wind_speeds[idx:idx+24]) if idx+24 <= len(wind_speeds) else 12.0
+                            icon = "🌧️" if day_rain > 0.2 else ("💨" if day_wind > 25 else "☀️")
+                            daily_forecasts.append({"date": day_date, "max": day_max, "rain": day_rain, "wind": day_wind, "icon": icon})
+                    
+                    if display_style == "بطاقات صغيرة لكل يوم":
+                        cols = st.columns(min(len(daily_forecasts), 5))
+                        for i, df in enumerate(daily_forecasts):
+                            with cols[i % 5]:
+                                st.markdown(f'<div class="weather-card"><b>{df["date"]}</b><br>{df["icon"]}<br>{format_temp(df["max"])}</div>', unsafe_allow_html=True)
+                    else:
+                        import pandas as pd
+                        st.dataframe(pd.DataFrame(daily_forecasts), use_container_width=True)
 
-            st.markdown(f"<h5 style='margin:4px 0; {is_rtl}'>{txt['expert_blog']}</h5>", unsafe_allow_html=True)
-            blog = f"استقرار مؤشر {selected_city} ذروة {format_temp(max_t)}، احتمالية أمطار {prob}% بتراكم {precip:.1f}ملم وفقاً للبيانات الأوروبية المحدثة."
-            st.info(blog)
-            
-            if prayer_data:
-                st.markdown(
-                    f"""
-                    <div class="prayer-row" style="{is_rtl}">
-                        <b>{txt['prayer_title']} {selected_city}:</b> 
-                        <span class="prayer-item">{txt['fajr']}: <span class="prayer-time">{prayer_data.get('Fajr')}</span></span> | 
-                        <span class="prayer-item">{txt['dhuhr']}: <span class="prayer-time">{prayer_data.get('Dhuhr')}</span></span> | 
-                        <span class="prayer-item">{txt['asr']}: <span class="prayer-time">{prayer_data.get('Asr')}</span></span> | 
-                        <span class="prayer-item">{txt['maghrib']}: <span class="prayer-time">{prayer_data.get('Maghrib')}</span></span> | 
-                        <span class="prayer-item">{txt['isha']}: <span class="prayer-time">{prayer_data.get('Isha')}</span></span>
-                    </div>
-                    """, 
-                    unsafe_allow_html=True
-                )
-            
-            share_text = f"🌤️ طقس {selected_city}:\n- الحرارة: {format_temp(max_t)}\n- الأمطار: {precip:.1f} ملم\n\n👇 حمل التطبيق APK:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
-            whatsapp_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(share_text)}"
-            st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="text-decoration:none;"><button style="background-color:#25D366;color:white;border:none;padding:6px;font-size:13px;border-radius:4px;width:100%;cursor:pointer;margin-top:2px;">{txt["whatsapp_btn"]}</button></a>', unsafe_allow_html=True)
+                st.markdown(f"<h5 style='margin:4px 0; {is_rtl}'>{txt['expert_blog']}</h5>", unsafe_allow_html=True)
+                blog = f"استقرار مؤشر {selected_city} ذروة {format_temp(max_t)}، احتمالية أمطار {prob}% بتراكم {precip:.1f}ملم وفقاً للبيانات الأوروبية المحدثة."
+                st.info(blog)
+                
+                if prayer_data:
+                    st.markdown(
+                        f"""
+                        <div class="prayer-row" style="{is_rtl}">
+                            <b>{txt['prayer_title']} {selected_city}:</b> 
+                            <span class="prayer-item">{txt['fajr']}: <span class="prayer-time">{prayer_data.get('Fajr')}</span></span> | 
+                            <span class="prayer-item">{txt['dhuhr']}: <span class="prayer-time">{prayer_data.get('Dhuhr')}</span></span> | 
+                            <span class="prayer-item">{txt['asr']}: <span class="prayer-time">{prayer_data.get('Asr')}</span></span> | 
+                            <span class="prayer-item">{txt['maghrib']}: <span class="prayer-time">{prayer_data.get('Maghrib')}</span></span> | 
+                            <span class="prayer-item">{txt['isha']}: <span class="prayer-time">{prayer_data.get('Isha')}</span></span>
+                        </div>
+                        """, 
+                        unsafe_allow_html=True
+                    )
+                
+                share_text = f"🌤️ طقس {selected_city}:\n- الحرارة: {format_temp(max_t)}\n- الأمطار: {precip:.1f} ملم\n\n👇 حمل التطبيق APK:\nhttps://github.com/abderahmababa-png/WeatherApp/releases/download/v9.8/app4051699-2gznhx.1.apk"
+                whatsapp_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(share_text)}"
+                st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="text-decoration:none;"><button style="background-color:#25D366;color:white;border:none;padding:6px;font-size:13px;border-radius:4px;width:100%;cursor:pointer;margin-top:2px;">{txt["whatsapp_btn"]}</button></a>', unsafe_allow_html=True)
             
         except Exception as e:
             st.error("جاري استعادة الاتصال واستقرار البيانات، يرجى الضغط مرة أخرى للتحديث.")
